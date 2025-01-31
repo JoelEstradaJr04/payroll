@@ -28,19 +28,7 @@ Class Action {
 			return 3;
 		}
 	}
-	function login2(){
-		extract($_POST);
-		$qry = $this->db->query("SELECT * FROM users where username = '".$email."' and password = '".md5($password)."' ");
-		if($qry->num_rows > 0){
-			foreach ($qry->fetch_array() as $key => $value) {
-				if($key != 'password' && !is_numeric($key))
-					$_SESSION['login_'.$key] = $value;
-			}
-				return 1;
-		}else{
-			return 3;
-		}
-	}
+
 	function logout(){
 		session_destroy();
 		foreach ($_SESSION as $key => $value) {
@@ -48,183 +36,232 @@ Class Action {
 		}
 		header("location:login.php");
 	}
-	function logout2(){
-		session_destroy();
-		foreach ($_SESSION as $key => $value) {
-			unset($_SESSION[$key]);
-		}
-		header("location:../index.php");
-	}
 
+	//! DONE
 	function save_user(){
 		extract($_POST);
-		$data = " name = '$name' ";
-		$data .= ", username = '$username' ";
-		$data .= ", password = '$password' ";
-		$data .= ", type = '$type' ";
-		if(empty($id)){
-			$save = $this->db->query("INSERT INTO users set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE users set ".$data." where id = ".$id);
+		$conn = $this->db; // Assuming $this->db is the database connection
+	
+		// Prepare stored procedure call
+		$stmt = $conn->prepare("CALL sp_save_user(?, ?, ?, ?, ?)");
+		
+		// Bind parameters (id can be null)
+		$stmt->bind_param("issss", $id, $name, $username, $password, $type);
+		
+		// Execute the stored procedure
+		$stmt->execute();
+	
+		// Fetch result
+		$result = $stmt->get_result();
+		if ($result) {
+			$row = $result->fetch_assoc();
+			return $row['status']; // Should return 1 if successful
 		}
-		if($save){
-			return 1;
-		}
+	
+		return 0; // Failure case
 	}
 	
+	//! DONE
 	function delete_user() {
 		extract($_POST);
-		$delete = $this->db->query("DELETE FROM users WHERE id = ".$id);
-		if($delete)
-			return 1;
+		$conn = $this->db; // Database connection
+
+		// Prepare stored procedure call
+		$stmt = $conn->prepare("CALL sp_delete_user(?)");
+		
+		// Bind the id parameter
+		$stmt->bind_param("i", $id);
+		
+		// Execute the procedure
+		$stmt->execute();
+		
+		// Fetch result
+		$result = $stmt->get_result();
+		if ($result) {
+			$row = $result->fetch_assoc();
+			return $row['status']; // Should return 1 if successful
+		}
+
+		return 0; // Failure case
+	}
+
+	//! DONE
+	function save_employee() {
+		extract($_POST);
+		$conn = $this->db; // Database connection
+	
+		// Prepare stored procedure call
+		$stmt = $conn->prepare("CALL sp_save_employee(?, ?, ?, ?, ?, ?, ?, @status)");
+		
+		// Bind parameters (id can be null)
+		$stmt->bind_param("isssiii", $id, $firstname, $middlename, $lastname, $position_id, $department_id, $salary);
+		
+		// Execute the procedure
+		$stmt->execute();
+	
+		// Retrieve the output status
+		$result = $conn->query("SELECT @status AS status");
+		if ($result) {
+			$row = $result->fetch_assoc();
+			return $row['status']; // Should return 1 if successful
+		}
+	
+		return 0; // Failure case
 	}
 	
-	function signup(){
+	//! DONE
+	function delete_employee() {
 		extract($_POST);
-		$data = " name = '$name' ";
-		$data .= ", contact = '$contact' ";
-		$data .= ", address = '$address' ";
-		$data .= ", username = '$email' ";
-		$data .= ", password = '".md5($password)."' ";
-		$data .= ", type = 3";
-		$chk = $this->db->query("SELECT * FROM users where username = '$email' ")->num_rows;
-		if($chk > 0){
-			return 2;
-			exit;
-		}
-			$save = $this->db->query("INSERT INTO users set ".$data);
-		if($save){
-			$qry = $this->db->query("SELECT * FROM users where username = '".$email."' and password = '".md5($password)."' ");
-			if($qry->num_rows > 0){
-				foreach ($qry->fetch_array() as $key => $value) {
-					if($key != 'passwors' && !is_numeric($key))
-						$_SESSION['login_'.$key] = $value;
-				}
-			}
-			return 1;
-		}
-	}
-
-	function save_settings(){
-		extract($_POST);
-		$data = " name = '".str_replace("'","&#x2019;",$name)."' ";
-		$data .= ", email = '$email' ";
-		$data .= ", contact = '$contact' ";
-		$data .= ", about_content = '".htmlentities(str_replace("'","&#x2019;",$about))."' ";
-		if($_FILES['img']['tmp_name'] != ''){
-						$fname = strtotime(date('y-m-d H:i')).'_'.$_FILES['img']['name'];
-						$move = move_uploaded_file($_FILES['img']['tmp_name'],'assets/img/'. $fname);
-					$data .= ", cover_img = '$fname' ";
-
-		}
-		
-		// echo "INSERT INTO system_settings set ".$data;
-		$chk = $this->db->query("SELECT * FROM system_settings");
-		if($chk->num_rows > 0){
-			$save = $this->db->query("UPDATE system_settings set ".$data);
-		}else{
-			$save = $this->db->query("INSERT INTO system_settings set ".$data);
-		}
-		if($save){
-		$query = $this->db->query("SELECT * FROM system_settings limit 1")->fetch_array();
-		foreach ($query as $key => $value) {
-			if(!is_numeric($key))
-				$_SESSION['setting_'.$key] = $value;
-		}
-
-			return 1;
-				}
-	}
-
+		$conn = $this->db; // Database connection
 	
-	function save_employee(){
-		extract($_POST);
-		$data =" firstname='$firstname' ";
-		$data .=", middlename='$middlename' ";
-		$data .=", lastname='$lastname' ";
-		$data .=", position_id='$position_id' ";
-		$data .=", department_id='$department_id' ";
-		$data .=", salary='$salary' ";
+		// Prepare stored procedure call
+		$stmt = $conn->prepare("CALL sp_delete_employee(?)");
 		
-
-		if(empty($id)){
-			$i= 1;
-			while($i == 1){
-			$e_num=date('Y') .'-'. mt_rand(1,9999);
-				$chk  = $this->db->query("SELECT * FROM employee where employee_no = '$e_num' ")->num_rows;
-				if($chk <= 0){
-					$i = 0;
-				}
-			}
-			$data .=", employee_no='$e_num' ";
-
-			$save = $this->db->query("INSERT INTO employee set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE employee set ".$data." where id=".$id);
+		// Bind the id parameter
+		$stmt->bind_param("i", $id);
+		
+		// Execute the procedure
+		$stmt->execute();
+		
+		// Fetch result
+		$result = $stmt->get_result();
+		if ($result) {
+			$row = $result->fetch_assoc();
+			return $row['status']; // Should return 1 if successful
 		}
-		if($save)
-			return 1;
-	}
-	function delete_employee(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM employee where id = ".$id);
-		if($delete)
-			return 1;
+	
+		return 0; // Failure case
 	}
 	
-	function save_department(){
+	//!DONE
+	function save_department() {
 		extract($_POST);
-		$data =" name='$name' ";
+		$conn = $this->db; // Database connection
+	
+		// Prepare stored procedure call
+		$stmt = $conn->prepare("CALL sp_save_department(?, ?, @status)");
 		
-
-		if(empty($id)){
-			$save = $this->db->query("INSERT INTO department set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE department set ".$data." where id=".$id);
-		}
-		if($save)
-			return 1;
-	}
-	function delete_department(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM department where id = ".$id);
-		if($delete)
-			return 1;
-	}
-	function save_position(){
-		extract($_POST);
-		$data =" name='$name' ";
-		$data .=", department_id = '$department_id' ";
+		// Bind parameters (id can be null)
+		$stmt->bind_param("is", $id, $name);
 		
-
-		if(empty($id)){
-			$save = $this->db->query("INSERT INTO position set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE position set ".$data." where id=".$id);
+		// Execute the procedure
+		$stmt->execute();
+	
+		// Retrieve the output status
+		$result = $conn->query("SELECT @status AS status");
+		if ($result) {
+			$row = $result->fetch_assoc();
+			return $row['status']; // Should return 1 if successful
 		}
-		if($save)
-			return 1;
+	
+		return 0; // Failure case
 	}
-	function delete_position(){
+	
+	//! DONE
+	function delete_department() {
 		extract($_POST);
-		$delete = $this->db->query("DELETE FROM position where id = ".$id);
-		if($delete)
-			return 1;
-	}
-	function save_allowances(){
-		extract($_POST);
-		$data =" allowance='$allowance' ";
-		$data .=", description = '$description' ";
+		$conn = $this->db; // Database connection
+	
+		// Prepare stored procedure call
+		$stmt = $conn->prepare("CALL sp_delete_department(?)");
 		
-
-		if(empty($id)){
-			$save = $this->db->query("INSERT INTO allowances set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE allowances set ".$data." where id=".$id);
+		// Bind the id parameter
+		$stmt->bind_param("i", $id);
+		
+		// Execute the procedure
+		$stmt->execute();
+		
+		// Fetch result
+		$result = $stmt->get_result();
+		if ($result) {
+			$row = $result->fetch_assoc();
+			return $row['status']; // Should return 1 if successful
 		}
-		if($save)
-			return 1;
+	
+		return 0; // Failure case
 	}
+
+	//! DONE
+	function save_position() {
+		extract($_POST);
+		
+		// Connect to the database
+		$conn = $this->db;
+	
+		// Prepare the stored procedure call
+		$stmt = $conn->prepare("CALL sp_save_position(?, ?, ?)");
+	
+		// Bind parameters
+		$stmt->bind_param("isi", $id, $name, $department_id);
+	
+		// Execute the statement
+		$save = $stmt->execute();
+	
+		// Close the statement
+		$stmt->close();
+	
+		// Return success status
+		if ($save) {
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+	
+	//! DONE
+	function delete_position() {
+		extract($_POST);
+		
+		// Connect to the database
+		$conn = $this->db;
+	
+		// Prepare the stored procedure call
+		$stmt = $conn->prepare("CALL sp_delete_position(?)");
+	
+		// Bind parameters
+		$stmt->bind_param("i", $id);
+	
+		// Execute the statement
+		$delete = $stmt->execute();
+	
+		// Close the statement
+		$stmt->close();
+	
+		// Return success status
+		if ($delete) {
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+
+	//!DONE
+	function save_allowances() {
+		extract($_POST);
+		
+		// Connect to the database
+		$conn = $this->db;
+	
+		// Prepare the stored procedure call
+		$stmt = $conn->prepare("CALL sp_save_allowances(?, ?, ?)");
+	
+		// Bind parameters: 'i' for integer (id), 's' for string (allowance), 's' for string (description)
+		$stmt->bind_param("iss", $id, $allowance, $description);
+	
+		// Execute the statement
+		$save = $stmt->execute();
+	
+		// Close the statement
+		$stmt->close();
+	
+		// Return success status
+		if ($save) {
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+	
 	function delete_allowances(){
 		extract($_POST);
 		$delete = $this->db->query("DELETE FROM allowances where id = ".$id);
@@ -354,6 +391,7 @@ Class Action {
 		if($delete)
 			return 1;
 	}
+	
 	function calculate_payroll(){
 		extract($_POST);
 		$am_in = "08:00";

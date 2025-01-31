@@ -44,21 +44,21 @@ header("location:index.php?page=home");
 		left: 0;
 		width: 90%;
 		height: calc(100%);
-		background: #59b6ec61;
+		background: darkblue;
 		display: flex;
 		align-items: center;
 	}
 
 	#login-left::after {
 		content: "";
-		position: absolute;
+		position: center;
 		top: 0;
 		left: 0;
 		width: calc(100%);
 		height: calc(100%);
 		background: url(assets/images/LoginPhoto.png);
 		background-repeat: no-repeat;
-		background-size: cover;
+		background-size: 65%;
 		z-index: 0;
 	}
 
@@ -73,7 +73,7 @@ header("location:index.php?page=home");
 		background: white;
 		padding: 0.5em 0.7em;
 		border-radius: 50%;
-		color: #000000b3;
+		color: darkblue;
 		z-index: 10;
 	}
 
@@ -84,7 +84,7 @@ header("location:index.php?page=home");
 		left: 0;
 		width: calc(100%);
 		height: calc(100%);
-		background: orange;
+		background: darkblue;
 	}
 
 
