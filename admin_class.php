@@ -268,6 +268,7 @@ Class Action {
 		if($delete)
 			return 1;
 	}
+	
 	function save_employee_allowance(){
 		extract($_POST);
 		
