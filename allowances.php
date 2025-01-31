@@ -53,9 +53,15 @@
 							</thead>
 							<tbody>
 								<?php 
+								$sql = "SELECT * FROM allowances ORDER BY id ASC"; // SQL query
+								$stmt = sqlsrv_query($conn, $sql); // Execute the query
+
+								if ($stmt === false) { // Check for errors
+									die(print_r(sqlsrv_errors(), true));  // Or handle errors more gracefully
+								}
+
+								while($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)): // Fetch results
 								$i = 1;
-								$allowances = $conn->query("SELECT * FROM allowances order by id asc");
-								while($row=$allowances->fetch_assoc()):
 								?>
 								<tr>
 									<td class="text-center"><?php echo $i++ ?></td>
@@ -69,7 +75,9 @@
 										<button class="btn btn-sm btn-danger delete_allowances" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
 									</td>
 								</tr>
-								<?php endwhile; ?>
+								<?php endwhile; 
+								sqlsrv_free_stmt($stmt);
+								?>
 							</tbody>
 						</table>
 					</div>

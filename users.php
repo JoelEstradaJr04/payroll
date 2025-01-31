@@ -23,7 +23,7 @@ include 'db_connect.php';
                     </thead>
                     <tbody>
                         <?php
-                        // Use sqlsrv_query for SQL Server
+                        //! Use sqlsrv_query for SQL Server
                         $sql = "SELECT id, name, username FROM users ORDER BY name ASC";
                         $stmt = sqlsrv_query($conn, $sql); // Execute query
 
