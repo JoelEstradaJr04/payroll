@@ -194,20 +194,170 @@ END $$
 
 DELIMITER ;
 
+DELIMITER $$
 
+CREATE PROCEDURE sp_delete_allowance(IN p_id INT)
+BEGIN
+    DELETE FROM allowances WHERE id = p_id;
+END $$
+
+DELIMITER ;
 
 DELIMITER $$
 
-CREATE PROCEDURE delete_allowances(IN id INT)
+CREATE PROCEDURE sp_save_employee_allowance(
+    IN p_employee_id INT,
+    IN p_allowance_id INT,
+    IN p_type VARCHAR(50),
+    IN p_amount DECIMAL(10,2),
+    IN p_effective_date DATE
+)
 BEGIN
-    DELETE FROM allowances WHERE id = id;
-    
-    -- Check if the deletion was successful
-    IF ROW_COUNT() > 0 THEN
-        SELECT 1 AS success; -- Return 1 if rows were deleted
+    INSERT INTO employee_allowances (employee_id, allowance_id, type, amount, effective_date)
+    VALUES (p_employee_id, p_allowance_id, p_type, p_amount, p_effective_date);
+END
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_delete_employee_allowance(IN p_id INT)
+BEGIN
+    DELETE FROM employee_allowances WHERE id = p_id;
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_save_deduction(
+    IN p_id INT,
+    IN p_deduction VARCHAR(255),
+    IN p_description TEXT
+)
+BEGIN
+    IF p_id IS NULL OR p_id = 0 THEN
+        INSERT INTO deductions (deduction, description)
+        VALUES (p_deduction, p_description);
     ELSE
-        SELECT 0 AS success; -- Return 0 if no rows were deleted
+        UPDATE deductions
+        SET deduction = p_deduction, description = p_description
+        WHERE id = p_id;
     END IF;
 END $$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_delete_deduction(IN p_id INT)
+BEGIN
+    DELETE FROM deductions WHERE id = p_id;
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_save_employee_deduction(
+    IN p_employee_id INT,
+    IN p_deduction_id INT,
+    IN p_type VARCHAR(50),
+    IN p_amount DECIMAL(10,2),
+    IN p_effective_date DATE
+)
+BEGIN
+    INSERT INTO employee_deductions (employee_id, deduction_id, type, amount, effective_date)
+    VALUES (p_employee_id, p_deduction_id, p_type, p_amount, p_effective_date);
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_delete_employee_deduction(IN p_id INT)
+BEGIN
+    DELETE FROM employee_deductions WHERE id = p_id;
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_save_employee_attendance(
+    IN p_employee_id INT,
+    IN p_log_type VARCHAR(50),
+    IN p_datetime_log DATETIME
+)
+BEGIN
+    INSERT INTO attendance (employee_id, log_type, datetime_log)
+    VALUES (p_employee_id, p_log_type, p_datetime_log);
+END $$
+
+DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_delete_employee_attendance(IN p_employee_id INT, IN p_date DATE)
+BEGIN
+    DELETE FROM attendance WHERE employee_id = p_employee_id AND DATE(datetime_log) = p_date;
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_delete_employee_attendance_single(IN p_id INT)
+BEGIN
+    DELETE FROM attendance WHERE id = p_id;
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_save_payroll(
+    IN p_id INT,
+    IN p_date_from DATE,
+    IN p_date_to DATE,
+    IN p_type VARCHAR(50),
+    OUT p_ref_no VARCHAR(20)
+)
+BEGIN
+    DECLARE v_ref_no VARCHAR(20);
+    DECLARE v_exists INT DEFAULT 1;
+
+    -- Generate a unique reference number if inserting a new record
+    IF p_id IS NULL OR p_id = 0 THEN
+        WHILE v_exists > 0 DO
+            SET v_ref_no = CONCAT(YEAR(NOW()), '-', FLOOR(1 + (RAND() * 9999)));
+            SELECT COUNT(*) INTO v_exists FROM payroll WHERE ref_no = v_ref_no;
+        END WHILE;
+
+        INSERT INTO payroll (date_from, date_to, type, ref_no)
+        VALUES (p_date_from, p_date_to, p_type, v_ref_no);
+
+        SET p_ref_no = v_ref_no;
+    ELSE
+        -- Update existing payroll entry
+        UPDATE payroll
+        SET date_from = p_date_from,
+            date_to = p_date_to,
+            type = p_type
+        WHERE id = p_id;
+    END IF;
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_delete_payroll(IN p_id INT)
+BEGIN
+    DELETE FROM payroll WHERE id = p_id;
+END $$
+
+DELIMITER ;
+
+

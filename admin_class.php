@@ -329,26 +329,29 @@ Class Action {
 	}
 	
 	//! DONE
-	function delete_employee_deduction(){
+	function delete_employee_deduction() {
 		extract($_POST);
-		$delete = $this->db->query("DELETE FROM employee_deductions where id = ".$id);
-		if($delete)
+		$stmt = $this->db->prepare("CALL sp_delete_employee_deduction(?)");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		if ($stmt) {
 			return 1;
-	}
-	function save_employee_attendance(){
-		extract($_POST);
-		
-		foreach($employee_id as $k =>$v){
-			$datetime_log[$k] =date("Y-m-d H:i",strtotime($datetime_log[$k]));
-			$data =" employee_id='$employee_id[$k]' ";
-			$data .=", log_type = '$log_type[$k]' ";
-			$data .=", datetime_log = '$datetime_log[$k]' ";
-			$save[] = $this->db->query("INSERT INTO attendance set ".$data);
 		}
-
-		if(isset($save))
-			return 1;
 	}
+
+	//! DONE
+	function save_employee_attendance() {
+		extract($_POST);
+		foreach ($employee_id as $k => $v) {
+			$datetime_log[$k] = date("Y-m-d H:i", strtotime($datetime_log[$k]));
+			$stmt = $this->db->prepare("CALL sp_save_employee_attendance(?, ?, ?)");
+			$stmt->bind_param("iss", $employee_id[$k], $log_type[$k], $datetime_log[$k]);
+			$stmt->execute();
+		}
+		return 1;
+	}
+	
+	//! DONE
 	function delete_employee_attendance(){
 		extract($_POST);
 		$date = explode('_',$id);
@@ -358,44 +361,47 @@ Class Action {
 		if($delete)
 			return 1;
 	}
-	function delete_employee_attendance_single(){
-		extract($_POST);
-		
- 
-		$delete = $this->db->query("DELETE FROM attendance where id = $id ");
-		if($delete)
-			return 1;
-	}
-	function save_payroll(){
-		extract($_POST);
-		$data =" date_from='$date_from' ";
-		$data .=", date_to = '$date_to' ";
-		$data .=", type = '$type' ";
-		
 
-		if(empty($id)){
-			$i= 1;
-			while($i == 1){
-			$ref_no=date('Y') .'-'. mt_rand(1,9999);
-				$chk  = $this->db->query("SELECT * FROM payroll where ref_no = '$ref_no' ")->num_rows;
-				if($chk <= 0){
-					$i = 0;
-				}
-			}
-			$data .=", ref_no='$ref_no' ";
-			$save = $this->db->query("INSERT INTO payroll set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE payroll set ".$data." where id=".$id);
-		}
-		if($save)
-			return 1;
-	}
-	function delete_payroll(){
+	//! DONE
+	function delete_employee_attendance_single() {
 		extract($_POST);
-		$delete = $this->db->query("DELETE FROM payroll where id = ".$id);
-		if($delete)
+		$stmt = $this->db->prepare("CALL sp_delete_employee_attendance_single(?)");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		if ($stmt) {
 			return 1;
+		}
 	}
+	
+	//! DONE
+	function save_payroll() {
+		extract($_POST);
+		$ref_no = "";
+	
+		$stmt = $this->db->prepare("CALL sp_save_payroll(?, ?, ?, ?, @ref_no)");
+		$stmt->bind_param("isss", $id, $date_from, $date_to, $type);
+		$stmt->execute();
+	
+		if (empty($id)) {
+			$result = $this->db->query("SELECT @ref_no AS ref_no");
+			$row = $result->fetch_assoc();
+			$ref_no = $row['ref_no'];
+		}
+	
+		return 1;
+	}
+	
+	//! DONE
+	function delete_payroll() {
+		extract($_POST);
+		$stmt = $this->db->prepare("CALL sp_delete_payroll(?)");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		if ($stmt) {
+			return 1;
+		}
+	}
+	
 	
 	function calculate_payroll(){
 		extract($_POST);
