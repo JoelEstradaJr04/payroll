@@ -262,91 +262,73 @@ Class Action {
 		}
 	}
 	
+	//! DONE
 	function delete_allowances() {
-		// Assuming you're using PDO or MySQLi for database connection
-	
-		// Extract data from the POST request
 		extract($_POST);
+		$stmt = $this->db->prepare("CALL sp_delete_allowance(?)");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		if ($stmt) {
+			return 1;
+		}
+	}
 	
-		// Prepare the SQL query to call the stored procedure
-		$query = "CALL delete_allowances(?)";
+	//! DONE
+	function save_employee_allowance() {
+		extract($_POST);
+		foreach ($allowance_id as $k => $v) {
+			$stmt = $this->db->prepare("CALL sp_save_employee_allowance(?, ?, ?, ?, ?)");
+			$stmt->bind_param("iisss", $employee_id, $allowance_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
+			$stmt->execute();
+		}
+		return 1;
+	}
 	
-		// Prepare the statement
-		$stmt = $this->db->prepare($query);
-	
-		// Bind the parameter (id) to the stored procedure
-		$stmt->bind_param("i", $id); // "i" stands for integer (id)
-	
-		// Execute the statement
-		if ($stmt->execute()) {
-			// Check if any rows were affected (success)
-			if ($stmt->affected_rows > 0) {
-				return 1;  // Successfully deleted
-			} else {
-				return 0;  // No rows deleted (id not found)
-			}
-		} else {
-			return 0;  // If there was an issue executing the procedure
+	//! DONE
+	function delete_employee_allowance() {
+		extract($_POST);
+		$stmt = $this->db->prepare("CALL sp_delete_employee_allowance(?)");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		if ($stmt) {
+			return 1;
 		}
 	}
 
-
-	function save_employee_allowance(){
+	//! DONE
+	function save_deductions() {
 		extract($_POST);
-		
-		foreach($allowance_id as $k =>$v){
-			$data =" employee_id='$employee_id' ";
-			$data .=", allowance_id = '$allowance_id[$k]' ";
-			$data .=", type = '$type[$k]' ";
-			$data .=", amount = '$amount[$k]' ";
-			$data .=", effective_date = '$effective_date[$k]' ";
-			$save[] = $this->db->query("INSERT INTO employee_allowances set ".$data);
+		$stmt = $this->db->prepare("CALL sp_save_deduction(?, ?, ?)");
+		$stmt->bind_param("iss", $id, $deduction, $description);
+		$stmt->execute();
+		if ($stmt) {
+			return 1;
 		}
-
-		if(isset($save))
-			return 1;
 	}
-	function delete_employee_allowance(){
+	
+	//! DONE
+	function delete_deductions() {
 		extract($_POST);
-		$delete = $this->db->query("DELETE FROM employee_allowances where id = ".$id);
-		if($delete)
+		$stmt = $this->db->prepare("CALL sp_delete_deduction(?)");
+		$stmt->bind_param("i", $id);
+		$stmt->execute();
+		if ($stmt) {
 			return 1;
-	}
-	function save_deductions(){
-		extract($_POST);
-		$data =" deduction='$deduction' ";
-		$data .=", description = '$description' ";
-		
-
-		if(empty($id)){
-			$save = $this->db->query("INSERT INTO deductions set ".$data);
-		}else{
-			$save = $this->db->query("UPDATE deductions set ".$data." where id=".$id);
 		}
-		if($save)
-			return 1;
 	}
-	function delete_deductions(){
+	
+	//! DONE
+	function save_employee_deduction() {
 		extract($_POST);
-		$delete = $this->db->query("DELETE FROM deductions where id = ".$id);
-		if($delete)
-			return 1;
-	}
-	function save_employee_deduction(){
-		extract($_POST);
-		
-		foreach($deduction_id as $k =>$v){
-			$data =" employee_id='$employee_id' ";
-			$data .=", deduction_id = '$deduction_id[$k]' ";
-			$data .=", type = '$type[$k]' ";
-			$data .=", amount = '$amount[$k]' ";
-			$data .=", effective_date = '$effective_date[$k]' ";
-			$save[] = $this->db->query("INSERT INTO employee_deductions set ".$data);
+		foreach ($deduction_id as $k => $v) {
+			$stmt = $this->db->prepare("CALL sp_save_employee_deduction(?, ?, ?, ?, ?)");
+			$stmt->bind_param("iisss", $employee_id, $deduction_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
+			$stmt->execute();
 		}
-
-		if(isset($save))
-			return 1;
+		return 1;
 	}
+	
+	//! DONE
 	function delete_employee_deduction(){
 		extract($_POST);
 		$delete = $this->db->query("DELETE FROM employee_deductions where id = ".$id);
