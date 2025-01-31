@@ -22,14 +22,35 @@
 							</thead>
 							<tbody>
 								<?php
-									
-									$payroll=$conn->query("SELECT * FROM payroll order by date(date_from) desc") or die(mysqli_error($conn));
-									while($row=$payroll->fetch_array()){
-								?>
+								$payroll_sql = "SELECT * FROM payroll ORDER BY CONVERT(DATE, date_from) DESC"; // Use CONVERT
+								$payroll_stmt = sqlsrv_query($conn, $payroll_sql);
+
+								if ($payroll_stmt === false) {
+									die(print_r(sqlsrv_errors(), true));
+								}
+
+								while ($row = sqlsrv_fetch_array($payroll_stmt, SQLSRV_FETCH_ASSOC)) {
+									?>
 								<tr>
 									<td><?php echo $row['ref_no']?></td>
-									<td><?php echo date("M d, Y",strtotime($row['date_from'])) ?></td>
-									<td><?php echo date("M d, Y",strtotime($row['date_to'])) ?></td>
+									<td>
+										<?php
+										if ($row['date_from'] instanceof DateTime) { // Check if it's a DateTime object
+											echo $row['date_from']->format("M d, Y"); // Format the DateTime object
+										} else {
+											echo "Invalid Date"; // Handle cases where it might not be a DateTime
+										}
+										?>
+									</td>
+									<td>            
+										<?php
+										if ($row['date_to'] instanceof DateTime) {  // Check if it's a DateTime object
+											echo $row['date_to']->format("M d, Y"); // Format the DateTime object
+										} else {
+											echo "Invalid Date"; // Handle cases where it might not be a DateTime
+										}
+										?>
+									</td>
 									<?php if($row['status'] == 0): ?>
 									<td class="text-center"><span class="badge badge-primary">New</span></td>
 									<?php else: ?>
@@ -49,7 +70,8 @@
 									</td>
 								</tr>
 								<?php
-									}
+								}
+								sqlsrv_free_stmt($payroll_stmt);
 								?>
 							</tbody>
 						</table>
