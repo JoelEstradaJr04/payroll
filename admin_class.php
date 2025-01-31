@@ -1,33 +1,112 @@
 <?php
-session_start();
-ini_set('display_errors', 1);
-Class Action {
-	private $db;
+class Action {
+    private $conn;
 
-	public function __construct() {
-		ob_start();
-   	include 'db_connect.php';
-    
-    $this->db = $conn;
-	}
-	function __destruct() {
-	    $this->db->close();
-	    ob_end_flush();
-	}
+    public function __construct() {
+        $this->connect();
+    }
 
-	function login(){
-		extract($_POST);
-		$qry = $this->db->query("SELECT * FROM users where username = '".$username."' and password = '".$password."' ");
-		if($qry->num_rows > 0){
-			foreach ($qry->fetch_array() as $key => $value) {
-				if($key != 'password' && !is_numeric($key))
-					$_SESSION['login_'.$key] = $value;
-			}
-				return 1;
-		}else{
+    private function connect() {
+        $serverName = "ESTRADAJR\SQLEXPRESS";
+        $database = "payroll";
+        $username = "sa";
+        $password = "password"; // Add your password here
+
+        $connectionOptions = array(
+            "Database" => $database,
+            "Uid" => $username,
+            "PWD" => $password,
+            "TrustServerCertificate" => true
+        );
+
+        try {
+            $this->conn = sqlsrv_connect($serverName, $connectionOptions);
+            
+            if($this->conn === false) {
+                $errors = sqlsrv_errors();
+                throw new Exception("Connection failed: " . ($errors ? $errors[0]['message'] : 'Unknown error'));
+            }
+            echo "<div class='alert alert-success' role='alert'>Successfully connected to the database!</div>";
+        } catch(Exception $e) {
+            echo "<div class='alert alert-danger' role='alert'>" . $e->getMessage() . "</div>";
+            die();
+        }
+    }
+
+    public function __destruct() {
+        if($this->conn) {
+            sqlsrv_close($this->conn);
+        }
+    }
+
+	public function login() {
+		// Start session if not already started
+		if (session_status() === PHP_SESSION_NONE) {
+			session_start();
+		}
+		
+		if (!isset($_POST['username']) || !isset($_POST['password'])) {
 			return 3;
 		}
+	
+		$username = $_POST['username'];
+		$password = $_POST['password'];
+	
+		$query = "SELECT id, employee_id, name, username, type 
+				 FROM users 
+				 WHERE username = ? 
+				 AND password = ? 
+				 AND isDeleted = 0";
+	
+		$stmt = sqlsrv_prepare($this->conn, $query, array($username, $password));
+	
+		if ($stmt === false) {
+			return 3;
+		}
+	
+		if (sqlsrv_execute($stmt)) {
+			$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+			
+			if ($row) {
+				// Store user data in session
+				foreach ($row as $key => $value) {
+					if ($key != 'password') {
+						$_SESSION['login_' . $key] = $value;
+					}
+				}
+	
+				// Get employee details
+				$emp_query = "SELECT firstname, lastname, department_id, position_id 
+							 FROM employee 
+							 WHERE id = ? 
+							 AND isDeleted = 0";
+				
+				$emp_stmt = sqlsrv_prepare($this->conn, $emp_query, array($row['employee_id']));
+				
+				if ($emp_stmt && sqlsrv_execute($emp_stmt)) {
+					$emp_row = sqlsrv_fetch_array($emp_stmt, SQLSRV_FETCH_ASSOC);
+					if ($emp_row) {
+						foreach ($emp_row as $key => $value) {
+							$_SESSION['login_' . $key] = $value;
+						}
+					}
+				}
+	
+				sqlsrv_free_stmt($emp_stmt);
+				sqlsrv_free_stmt($stmt);
+				
+				// Set a login ID to check redirect condition
+				$_SESSION['login_id'] = $row['id'];
+				
+				// Return only the number, no HTML or scripts
+				return 1;
+			}
+		}
+	
+		sqlsrv_free_stmt($stmt);
+		return 3;
 	}
+
 
 	function logout(){
 		session_destroy();

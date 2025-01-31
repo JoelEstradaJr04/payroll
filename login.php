@@ -8,13 +8,14 @@
   <title>Admin | Employee's Payroll Management System</title>
  	
 
-<?php include('./header.php'); ?>
-<?php include('./db_connect.php'); ?>
-<?php 
+  <?php 
 session_start();
-if(isset($_SESSION['login_id']))
-header("location:index.php?page=home");
-
+if(isset($_SESSION['login_id'])) {
+    header("location:index.php?page=home");
+    exit();
+}
+include('./header.php'); 
+include('./db_connect.php'); 
 ?>
 
 </head>
@@ -111,7 +112,7 @@ header("location:index.php?page=home");
   							<label for="password" class="control-label">Password</label>
   							<input type="password" id="password" name="password" class="form-control">
   						</div>
-  						<center><button class="btn-sm btn-block btn-wave col-md-4 btn-primary">Login</button></center>
+  						<center><button type="submit" class="btn-sm btn-block btn-wave col-md-4 btn-primary">Login</button></center>
   					</form>
   				</div>
   			</div>
@@ -125,31 +126,62 @@ header("location:index.php?page=home");
 
 </body>
 <script>
-	$('#login-form').submit(function(e){
-		e.preventDefault()
-		$('#login-form button[type="button"]').attr('disabled',true).html('Logging in...');
-		if($(this).find('.alert-danger').length > 0 )
-			$(this).find('.alert-danger').remove();
-		$.ajax({
-			url:'ajax.php?action=login',
-			method:'POST',
-			data:$(this).serialize(),
-			error:err=>{
-				console.log(err)
-		$('#login-form button[type="button"]').removeAttr('disabled').html('Login');
-
-			},
-			success:function(resp){
-				if(resp == 1){
-					location.href ='index.php?page=home';
-				}else if(resp == 2){
-					location.href ='voting.php';
-				}else{
-					$('#login-form').prepend('<div class="alert alert-danger">Username or password is incorrect.</div>')
-					$('#login-form button[type="button"]').removeAttr('disabled').html('Login');
-				}
-			}
-		})
-	})
+$(document).ready(function() {
+    $('#login-form').submit(function(e){
+        e.preventDefault();
+        
+        console.log('Form submitted'); // Debug log
+        
+        // Clear any existing alerts
+        $('.alert').remove();
+        
+        // Disable button and show loading
+        const loginBtn = $(this).find('button[type="submit"]');
+        loginBtn.prop('disabled', true).html('Logging in...');
+        
+        // Debug: Log form data
+        console.log('Form data:', $(this).serialize());
+        
+        $.ajax({
+            url: 'ajax.php?action=login',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'text',
+            error: function(xhr, status, error) {
+                console.error('Login error:', error);
+                console.log('Status:', status);
+                console.log('Response:', xhr.responseText);
+                
+                loginBtn.prop('disabled', false).html('Login');
+                $('#login-form').prepend('<div class="alert alert-danger">An error occurred during login.</div>');
+            },
+            success: function(resp) {
+                console.log('Raw server response:', resp); // Log raw response
+                
+                // Remove any whitespace and HTML
+                const cleanResp = resp.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                console.log('Cleaned response:', cleanResp);
+                
+                // Try to parse response as number
+                const response = parseInt(cleanResp);
+                console.log('Parsed response:', response);
+                
+                if(response === 1) {
+                    console.log('Login successful, attempting redirect...');
+                    // Try both methods of redirect
+                    window.location.href = 'index.php?page=home';
+                    if(!window.location.href.includes('index.php')) {
+                        window.location.replace('index.php?page=home');
+                    }
+                } else if(response === 2) {
+                    window.location.href = 'voting.php';
+                } else {
+                    $('#login-form').prepend('<div class="alert alert-danger">Username or password is incorrect.</div>');
+                    loginBtn.prop('disabled', false).html('Login');
+                }
+            }
+        });
+    });
+});
 </script>	
 </html>

@@ -1,13 +1,16 @@
 <?php
-ob_start();
-$action = $_GET['action'];
+session_start();
 include 'admin_class.php';
 $crud = new Action();
 
-if($action == 'login'){
-	$login = $crud->login();
-	if($login)
-		echo $login;
+if(isset($_GET['action'])) {
+    $action = $_GET['action'];
+    
+    if($action == 'login'){
+        // Return only the result number
+        echo $crud->login();
+        exit();
+    }
 }
 if($action == 'logout'){
 	$logout = $crud->logout();
