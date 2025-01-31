@@ -1,92 +1,91 @@
-<?php include('db_connect.php');?>
+<?php include('db_connect.php'); ?>
 
 <div class="container-fluid">
-	
-	<div class="col-lg-12">
-		<div class="row">
-			<!-- FORM Panel -->
-			<div class="col-md-4">
-			<form action="" id="manage-department">
-				<div class="card">
-					<div class="card-header">
-						  Department Form
-				  	</div>
-					<div class="card-body">
-							<input type="hidden" name="id">
-							<div class="form-group">
-								<label class="control-label">Name</label>
-								<textarea name="name" id="" cols="30" rows="2" class="form-control"></textarea>
-							</div>
-							
-							
-							
-					</div>
-							
-					<div class="card-footer">
-						<div class="row">
-							<div class="col-md-12">
-								<button class="btn btn-sm btn-primary col-sm-3 offset-md-3"> Save</button>
-								<button class="btn btn-sm btn-default col-sm-3" type="button" onclick="_reset()"> Cancel</button>
-							</div>
-						</div>
-					</div>
-				</div>
-			</form>
-			</div>
-			<!-- FORM Panel -->
+    <div class="col-lg-12">
+        <div class="row">
+            <div class="col-md-4">
+                <form action="" id="manage-department">
+                    <div class="card">
+                        <div class="card-header">
+                            Department Form
+                        </div>
+                        <div class="card-body">
+                            <input type="hidden" name="id">
+                            <div class="form-group">
+                                <label class="control-label">Name</label>
+                                <textarea name="name" id="" cols="30" rows="2" class="form-control"></textarea>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <button class="btn btn-sm btn-primary col-sm-3 offset-md-3">Save</button>
+                                    <button class="btn btn-sm btn-default col-sm-3" type="button" onclick="_reset()">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
 
-			<!-- Table Panel -->
-			<div class="col-md-8">
-				<div class="card">
-					<div class="card-body">
-						<table class="table table-bordered table-hover">
-							<thead>
-								<tr>
-									<th class="text-center">#</th>
-									<th class="text-center">Department</th>
-									<th class="text-center">Action</th>
-								</tr>
-							</thead>
-							<tbody>
-								<?php 
-								$i = 1;
-								$department = $conn->query("SELECT * FROM department order by id asc");
-								while($row=$department->fetch_assoc()):
-								?>
-								<tr>
-									<td class="text-center"><?php echo $i++ ?></td>
-									
-									<td class="">
-										 <p> <b><?php echo $row['name'] ?></b></p>
-									</td>
-									<td class="text-center">
-										<button class="btn btn-sm btn-primary edit_department" type="button" data-id="<?php echo $row['id'] ?>" data-name="<?php echo $row['name'] ?>"  >Edit</button>
-										<button class="btn btn-sm btn-danger delete_department" type="button" data-id="<?php echo $row['id'] ?>">Delete</button>
-									</td>
-								</tr>
-								<?php endwhile; ?>
-							</tbody>
-						</table>
-					</div>
-				</div>
-			</div>
-			<!-- Table Panel -->
-		</div>
-	</div>	
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">#</th>
+                                    <th class="text-center">Department</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $sql = "SELECT * FROM department ORDER BY id ASC"; // SQL Server query
+                                $stmt = sqlsrv_query($conn, $sql);
 
+                                if ($stmt === false) {
+                                    die(print_r(sqlsrv_errors(), true));
+                                }
+
+                                $i = 1;
+                                while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
+                                    ?>
+                                    <tr>
+                                        <td class="text-center"><?php echo $i++; ?></td>
+                                        <td class="">
+                                            <p><b><?php echo $row['name']; ?></b></p>
+                                        </td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-primary edit_department" type="button" data-id="<?php echo $row['id']; ?>" data-name="<?php echo $row['name']; ?>">Edit</button>
+                                            <button class="btn btn-sm btn-danger delete_department" type="button" data-id="<?php echo $row['id']; ?>">Delete</button>
+                                        </td>
+                                    </tr>
+                                <?php endwhile;
+                                sqlsrv_free_stmt($stmt); // Free statement resource
+                                ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 <style>
-	
-	td{
-		vertical-align: middle !important;
-	}
-	td p{
-		margin: unset
-	}
-	img{
-		max-width:100px;
-		max-height:150px;
-	}
+    td {
+        vertical-align: middle !important;
+    }
+
+    td p {
+        margin: unset
+    }
+
+    img {
+        max-width: 100px;
+        max-height: 150px;
+    }
 </style>
 <script>
 	function _reset(){
