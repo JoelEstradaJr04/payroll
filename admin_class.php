@@ -262,13 +262,35 @@ Class Action {
 		}
 	}
 	
-	function delete_allowances(){
-		extract($_POST);
-		$delete = $this->db->query("DELETE FROM allowances where id = ".$id);
-		if($delete)
-			return 1;
-	}
+	function delete_allowances() {
+		// Assuming you're using PDO or MySQLi for database connection
 	
+		// Extract data from the POST request
+		extract($_POST);
+	
+		// Prepare the SQL query to call the stored procedure
+		$query = "CALL delete_allowances(?)";
+	
+		// Prepare the statement
+		$stmt = $this->db->prepare($query);
+	
+		// Bind the parameter (id) to the stored procedure
+		$stmt->bind_param("i", $id); // "i" stands for integer (id)
+	
+		// Execute the statement
+		if ($stmt->execute()) {
+			// Check if any rows were affected (success)
+			if ($stmt->affected_rows > 0) {
+				return 1;  // Successfully deleted
+			} else {
+				return 0;  // No rows deleted (id not found)
+			}
+		} else {
+			return 0;  // If there was an issue executing the procedure
+		}
+	}
+
+
 	function save_employee_allowance(){
 		extract($_POST);
 		
