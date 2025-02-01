@@ -1,8 +1,8 @@
 <?php
 
 // Database configuration
-$serverName = "ESTRADAJR\SQLEXPRESS"; // Your SQL Server instance
-$database = "payroll"; // Your database name
+$serverName = "DESKTOP-0TVAF8A\SQLEXPRESS"; // Your SQL Server instance
+$database = "payroll2"; // Your database name
 $username = "sa"; // Your SQL Server username
 $password = "password"; // Your SQL Server password - make sure to add your password here
 

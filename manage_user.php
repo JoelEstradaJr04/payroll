@@ -1,20 +1,38 @@
 <?php
 include('db_connect.php');
-
 if (isset($_GET['id'])) {
     // Use parameterized query to prevent SQL injection
-    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->bind_param("i", $_GET['id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $meta = $result->fetch_assoc(); // Fetch as associative array
-    $stmt->close();
+    $query = "SELECT * FROM users WHERE id = ?"; // Your SQL query
 
-    if (!$meta) { // Check if user exists
-        echo "User not found.";
+    // Prepare the query with sqlsrv_prepare
+    $params = array($_GET['id']); // The parameter for the query (id)
+
+    $stmt = sqlsrv_prepare($conn, $query, $params);
+
+    if ($stmt === false) {
+        die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+    }
+
+    // Execute the query
+    if (sqlsrv_execute($stmt)) {
+        // Fetch the result as an associative array
+        $meta = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        
+        if (!$meta) { // Check if user exists
+            echo "User not found.";
+            exit;
+        }
+
+        // Do something with $meta if user exists
+        // Example: print_r($meta);
+    } else {
+        echo "Error executing the query.";
         exit;
     }
+
+    sqlsrv_free_stmt($stmt); // Free the statement
 }
+
 ?>
 
 <div class="container-fluid">
@@ -54,11 +72,11 @@ if (isset($_GET['id'])) {
             data: $(this).serialize(),
             error: err => console.log(err), // Log errors
             success: function (resp) {
-                if (resp == 1) {
+                if (resp === "1") {
                     alert_toast("Data successfully saved", 'success');
-                    setTimeout(function () {
-                        location.reload();
-                    }, 1500);
+                    // setTimeout(function () {
+                    //     location.reload();
+                    // }, 1500);
                 } else {
                     console.error("Error saving user:", resp); // Log detailed error
                     alert_toast("Error saving user. Check console.", "danger"); // User-friendly message

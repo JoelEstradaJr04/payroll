@@ -7,8 +7,8 @@ class Action {
     }
 
     private function connect() {
-        $serverName = "ESTRADAJR\SQLEXPRESS";
-        $database = "payroll";
+        $serverName = "DESKTOP-0TVAF8A\SQLEXPRESS";
+        $database = "payroll2";
         $username = "sa";
         $password = "password"; // Add your password here
 
@@ -38,13 +38,12 @@ class Action {
             sqlsrv_close($this->conn);
         }
     }
-
 	public function login() {
 		// Start session if not already started
 		if (session_status() === PHP_SESSION_NONE) {
 			session_start();
 		}
-		
+	
 		if (!isset($_POST['username']) || !isset($_POST['password'])) {
 			return 3;
 		}
@@ -53,20 +52,22 @@ class Action {
 		$password = $_POST['password'];
 	
 		$query = "SELECT id, employee_id, name, username, type 
-				 FROM users 
-				 WHERE username = ? 
-				 AND password = ? 
-				 AND isDeleted = 0";
+				  FROM users 
+				  WHERE username = ? 
+				  AND password = ? 
+				  AND isDeleted = 0";
 	
-		$stmt = sqlsrv_prepare($this->conn, $query, array($username, $password));
+		// Prepare the statement with parameters passed by reference
+		$stmt = sqlsrv_prepare($this->conn, $query, array(&$username, &$password));
 	
 		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging
 			return 3;
 		}
 	
 		if (sqlsrv_execute($stmt)) {
 			$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-			
+	
 			if ($row) {
 				// Store user data in session
 				foreach ($row as $key => $value) {
@@ -77,13 +78,18 @@ class Action {
 	
 				// Get employee details
 				$emp_query = "SELECT firstname, lastname, department_id, position_id 
-							 FROM employee 
-							 WHERE id = ? 
-							 AND isDeleted = 0";
-				
-				$emp_stmt = sqlsrv_prepare($this->conn, $emp_query, array($row['employee_id']));
-				
-				if ($emp_stmt && sqlsrv_execute($emp_stmt)) {
+							  FROM employee 
+							  WHERE id = ? 
+							  AND isDeleted = 0";
+	
+				$emp_stmt = sqlsrv_prepare($this->conn, $emp_query, array(&$row['employee_id']));
+	
+				if ($emp_stmt === false) {
+					die(print_r(sqlsrv_errors(), true)); // Debugging
+					return 3;
+				}
+	
+				if (sqlsrv_execute($emp_stmt)) {
 					$emp_row = sqlsrv_fetch_array($emp_stmt, SQLSRV_FETCH_ASSOC);
 					if ($emp_row) {
 						foreach ($emp_row as $key => $value) {
@@ -94,11 +100,10 @@ class Action {
 	
 				sqlsrv_free_stmt($emp_stmt);
 				sqlsrv_free_stmt($stmt);
-				
+	
 				// Set a login ID to check redirect condition
 				$_SESSION['login_id'] = $row['id'];
-				
-				// Return only the number, no HTML or scripts
+	
 				return 1;
 			}
 		}
@@ -106,7 +111,7 @@ class Action {
 		sqlsrv_free_stmt($stmt);
 		return 3;
 	}
-
+	
 
 	function logout(){
 		session_destroy();
@@ -119,25 +124,30 @@ class Action {
 	//! DONE
 	function save_user(){
 		extract($_POST);
-		$conn = $this->db; // Assuming $this->db is the database connection
-	
-		// Prepare stored procedure call
-		$stmt = $conn->prepare("CALL sp_save_user(?, ?, ?, ?, ?)");
-		
-		// Bind parameters (id can be null)
-		$stmt->bind_param("issss", $id, $name, $username, $password, $type);
-		
-		// Execute the stored procedure
-		$stmt->execute();
-	
-		// Fetch result
-		$result = $stmt->get_result();
-		if ($result) {
-			$row = $result->fetch_assoc();
-			return $row['status']; // Should return 1 if successful
+		$conn = $this->conn; // Assuming $this->conn is the database connection
+
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_save_user ?, ?, ?, ?, ?, ?";
+		$params = array($id, 9, $name, $username, $password, $type);
+
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
 		}
-	
+
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+
 		return 0; // Failure case
+
 	}
 	
 	//! DONE
