@@ -48,7 +48,7 @@
                         sqlsrv_free_stmt($pos_stmt); // Free statement resource
 
 
-                        $employee_sql = "SELECT * FROM employee"; // SQL Server query
+                        $employee_sql = "EXEC SP_Show_Employee"; // SQL Server query
                         $employee_stmt = sqlsrv_query($conn, $employee_sql);
                         if ($employee_stmt === false) {
                             die(print_r(sqlsrv_errors(), true)); // Error handling

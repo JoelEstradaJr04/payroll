@@ -1,78 +1,70 @@
-<?php include 'db_connect.php'; ?>
-
 <?php
-    $stmt = $conn->prepare("SELECT p.*, CONCAT(e.lastname, ', ', e.firstname, ' ', e.middlename) AS ename, e.employee_no FROM payroll_items p INNER JOIN employee e ON e.id = p.employee_id WHERE p.id = ?");
-    $stmt->bind_param("i", $_GET['id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $payroll = $result->fetch_assoc();
-    
-    foreach ($payroll as $key => $value) {
-        $$key = $value;
-    }
-    
-    $stmt = $conn->prepare("SELECT * FROM payroll WHERE id = ?");
-    $stmt->bind_param("i", $payroll_id);
-    $stmt->execute();
-    $pay = $stmt->get_result()->fetch_assoc();
-    
-    $pt = array(1 => "Monthly", 2 => "Semi-Monthly");
-?>
+include 'db_connect.php';
 
+// Check if the connection is successful
+if ($conn === false) {
+    die("ERROR: Could not connect. " . sqlsrv_errors());
+}
+
+$sql = "SELECT * FROM payroll_items WHERE payroll_id = ? AND employee_id = ?";
+$params = array($_GET['id'], $_GET['eid']);
+
+// Prepare the statement
+$stmt = sqlsrv_prepare($conn, $sql, $params);
+
+// Check if the statement was prepared successfully
+if ($stmt === false) {
+    die("ERROR: Could not prepare query. " . sqlsrv_errors());
+}
+
+// Execute the statement
+if (sqlsrv_execute($stmt) === false) {
+    die("ERROR: Could not execute query. " . sqlsrv_errors());
+}
+
+// Fetch the results
+$payroll_items = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+
+// Close the statement and connection
+sqlsrv_free_stmt($stmt);
+sqlsrv_close($conn);
+?>
 <div class="container-fluid">
-    <div class="col-md-12">
-        <h5><b><small>Employee ID :</small> <?php echo $employee_no; ?></b></h5>
-        <h4><b><small>Name: </small> <?php echo ucwords($ename); ?></b></h4>
-        <hr class="divider">
+    <div class="col-lg-12">
         <div class="row">
             <div class="col-md-6">
-                <p><b>Payroll Ref : <?php echo $pay['ref_no']; ?></b></p>
-                <p><b>Payroll Range : <?php echo date("M d, Y", strtotime($pay['date_from'])) . " - " . date("M d, Y", strtotime($pay['date_to'])); ?></b></p>
-                <p><b>Payroll type : <?php echo $pt[$pay['type']]; ?></b></p>
+                <p>Employee: <b><?php echo ucwords($employee['name']) ?></b></p>
+                <p>Payroll: <b><?php echo $payroll['ref_no'] ?></b></p>
+                <p>Salary: <b><?php echo number_format($payroll_items['salary'],2) ?></b></p>
+                <p>Allowance: <b><?php echo number_format($payroll_items['allowance_amount'],2) ?></b></p>
+                <p>Deduction: <b><?php echo number_format($payroll_items['deduction_amount'],2) ?></b></p>
+                <p>Net: <b><?php echo number_format($payroll_items['net'],2) ?></b></p>
             </div>
-            <div class="col-md-6">
-                <p><b>Days of Absent : <?php echo $absent; ?></b></p>
-                <p><b>Tardy/Undertime (mins) : <?php echo $late; ?></b></p>
-                <p><b>Total Allowance Amount : <?php echo number_format($allowance_amount, 2); ?></b></p>
-                <p><b>Total Deduction Amount : <?php echo number_format($deduction_amount, 2); ?></b></p>
-                <p><b>Net Pay : <?php echo number_format($net, 2); ?></b></p>
-            </div>
-        </div>
-        <hr class="divider">
-        <div class="row">
             <div class="col-md-6">
                 <div class="card">
-                    <div class="card-header"><b>Allowances</b></div>
+                    <div class="card-header">
+                        <b>Allowances</b>
+                    </div>
                     <div class="card-body">
                         <ul class="list-group">
                             <?php
-                            $all_qry = $conn->query("SELECT * FROM allowances");
-                            $all_arr = [];
-                            while ($row = $all_qry->fetch_assoc()) {
-                                $all_arr[$row['id']] = $row['allowance'];
-                            }
                             foreach (json_decode($allowances) as $val):
                             ?>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <?php echo $all_arr[$val->aid]; ?> Allowance
+                                    <?php echo $all_arr[$val->aid]; ?>
                                     <span class="badge badge-primary badge-pill"><?php echo number_format($val->amount, 2); ?></span>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header"><b>Deductions</b></div>
+                <div class="card mt-2">
+                    <div class="card-header">
+                        <b>Deductions</b>
+                    </div>
                     <div class="card-body">
                         <ul class="list-group">
                             <?php
-                            $ded_qry = $conn->query("SELECT * FROM deductions");
-                            $ded_arr = [];
-                            while ($row = $ded_qry->fetch_assoc()) {
-                                $ded_arr[$row['id']] = $row['deduction'];
-                            }
                             foreach (json_decode($deductions) as $val):
                             ?>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">

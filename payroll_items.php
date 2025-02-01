@@ -2,12 +2,17 @@
 <?php
 if (isset($_GET['id'])) {
     // Use parameterized query to prevent SQL injection
-    $stmt = $conn->prepare("SELECT * FROM payroll WHERE id = ?");
-    $stmt->bind_param("i", $_GET['id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $pay = $result->fetch_assoc();
-    $stmt->close();
+    $sql = "SELECT * FROM payroll WHERE id = ?";
+    $params = array($_GET['id']);
+    $stmt = sqlsrv_query($conn, $sql, $params);
+
+    // Check if the statement was executed successfully
+    if ($stmt === false) {
+        die("ERROR: Could not execute query. " . print_r(sqlsrv_errors(), true));
+    }
+
+    $pay = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+    sqlsrv_free_stmt($stmt);
 
     if (!$pay) {
         echo "Payroll not found.";
@@ -27,12 +32,12 @@ $pt = array(1 => "Monthly", 2 => "Semi-Monthly");
         <div class="card">
             <div class="card-header">
                 <span><b>Payroll : <?php echo $pay['ref_no'] ?></b></span>
-                <button class="btn btn-primary btn-sm btn-block col-md-2 float-right" type="button" id="new_payroll_btn"><span class="fa fa-plus"></span> Re-Caclulate Payroll</button>
+                <button class="btn btn-primary btn-sm btn-block col-md-2 float-right" type="button" id="new_payroll_btn"><span class="fa fa-plus"></span> Re-Calculate Payroll</button>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-12">
-                        <p>Payroll Range: <b><?php echo date("M d, Y", strtotime($pay['date_from'])) . " - " . date("M d, Y", strtotime($pay['date_to'])) ?></b></p>
+                        <p>Payroll Range: <b><?php echo date("M d, Y", strtotime($pay['date_from']->format('Y-m-d'))) . " - " . date("M d, Y", strtotime($pay['date_to']->format('Y-m-d'))) ?></b></p>
                         <p>Payroll Type: <b><?php echo $pt[$pay['type']] ?></b></p>
                         <button class="btn btn-success btn-sm btn-block col-md-2 float-right" type="button" id="print_btn"><span class="fa fa-print"></span> Print</button>
                     </div>

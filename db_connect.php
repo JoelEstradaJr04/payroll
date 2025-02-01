@@ -2,7 +2,7 @@
 
 // Database configuration
 $serverName = "DESKTOP-2A9KFDV\SQLEXPRESS"; // Your SQL Server instance
-$database = "payroll"; // Your database name
+$database = "PAYROLL2"; // Your database name
 $username = "sa"; // Your SQL Server username
 $password = "abc123"; // Your SQL Server password - make sure to add your password here
 

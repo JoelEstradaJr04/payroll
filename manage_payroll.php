@@ -3,7 +3,7 @@
 <div class="container-fluid">
     <div class="col-lg-12">
         <form id="manage-payroll">
-            <input type="hidden" name="id" value="<?php echo isset($_GET['id']) ? $_GET['id'] : '' ?>">  </input>
+            <input type="hidden" name="id" value="<?php echo isset($_GET['id']) ? $_GET['id'] : '' ?>">  
             <div class="form-group">
                 <label for="" class="control-label">Date From :</label>
                 <input type="date" class="form-control" name="date_from" value="<?php echo isset($date_from) ? $date_from : ''; ?>" required>
@@ -19,6 +19,7 @@
                     <option value="2" <?php echo (isset($type) && $type == 2) ? 'selected' : ''; ?>>Semi-Monthly</option>
                 </select>
             </div>
+            <button type="submit" class="btn btn-primary">Save</button>
         </form>
     </div>
 </div>

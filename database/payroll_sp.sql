@@ -104,25 +104,32 @@ DELIMITER ;
 
 DELIMITER //
 
-CREATE PROCEDURE `sp_save_department` (
-    IN p_id INT,
-    IN p_name VARCHAR(255),
-    OUT p_status INT
-)
+CREATE PROCEDURE sp_save_department
+    @p_id INT,
+    @p_name NVARCHAR(255),
+    @status INT OUTPUT
+AS
 BEGIN
+    SET NOCOUNT ON;
+
     -- If id is NULL or 0, insert a new department
-    IF p_id IS NULL OR p_id = 0 THEN
-        INSERT INTO department (name) VALUES (p_name);
+    IF @p_id IS NULL OR @p_id = 0
+    BEGIN
+        INSERT INTO department (name) VALUES (@p_name);
+        SET @p_id = SCOPE_IDENTITY();
+    END
     ELSE
+    BEGIN
         -- Update existing department
         UPDATE department 
-        SET name = p_name 
-        WHERE id = p_id;
-    END IF;
+        SET name = @p_name 
+        WHERE id = @p_id;
+    END
 
     -- Set return status
-    SET p_status = 1;
-END //
+    SET @status = 1;
+END;
+GO
 
 DELIMITER ;
 

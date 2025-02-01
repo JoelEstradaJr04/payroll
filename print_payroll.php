@@ -27,12 +27,16 @@
 <?php include('db_connect.php') ?>
 <?php
 if (isset($_GET['id'])) {
-    $stmt = $conn->prepare("SELECT * FROM payroll WHERE id = ?");
-    $stmt->bind_param("i", $_GET['id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $pay = $result->fetch_assoc();
-    $stmt->close();
+    $sql = "SELECT * FROM payroll WHERE id = ?";
+    $params = array($_GET['id']);
+    $stmt = sqlsrv_query($conn, $sql, $params);
+
+    if ($stmt === false) {
+        die("ERROR: Could not execute query. " . print_r(sqlsrv_errors(), true));
+    }
+
+    $pay = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+    sqlsrv_free_stmt($stmt);
 
     if (!$pay) {
         echo "Payroll not found.";

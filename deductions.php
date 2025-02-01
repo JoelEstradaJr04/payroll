@@ -45,7 +45,7 @@
                             </thead>
                             <tbody>
                                 <?php
-                                $sql = "SELECT * FROM deductions ORDER BY id ASC"; // SQL Server query
+                                $sql = "EXEC SP_Show_Deduction"; // SQL Server query
                                 $stmt = sqlsrv_query($conn, $sql);
 
                                 if ($stmt === false) {

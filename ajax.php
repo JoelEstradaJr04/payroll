@@ -39,9 +39,9 @@ if($action == "delete_employee"){
 		echo $save;
 }
 if($action == "save_department"){
-	$save = $crud->save_department();
-	if($save)
-		echo $save;
+    $save = $crud->save_department();
+    if($save)
+        echo $save;
 }
 if($action == "delete_department"){
 	$save = $crud->delete_department();

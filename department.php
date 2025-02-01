@@ -41,7 +41,7 @@
                             </thead>
                             <tbody>
                                 <?php
-                                $sql = "SELECT * FROM department ORDER BY id ASC"; // SQL Server query
+                                $sql = "EXEC SP_Show_Department"; // SQL Server query
                                 $stmt = sqlsrv_query($conn, $sql);
 
                                 if ($stmt === false) {
@@ -94,34 +94,36 @@
 	}
 	
 	$('#manage-department').submit(function(e){
-		e.preventDefault()
-		start_load()
-		$.ajax({
-			url:'ajax.php?action=save_department',
-			data: new FormData($(this)[0]),
-		    cache: false,
-		    contentType: false,
-		    processData: false,
-		    method: 'POST',
-		    type: 'POST',
-			success:function(resp){
-				if(resp==1){
-					alert_toast("Data successfully added",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
+        e.preventDefault();
+        start_load();
+        $.ajax({
+            url: 'ajax.php?action=save_department',
+            data: new FormData($(this)[0]),
+            cache: false,
+            contentType: false,
+            processData: false,
+            method: 'POST',
+            type: 'POST',
+            success: function(resp){
+                if(resp == 1){
+                    alert_toast("Data successfully added", 'success');
+                    setTimeout(function(){
+                        location.reload();
+                    }, 1500);
+                }
+                else if(resp == 2){
+                    alert_toast("Data successfully updated", 'success');
+                    setTimeout(function(){
+                        location.reload();
+                    }, 1500);
+                }
+                else {
+                    console.error("Error saving department:", resp); // Log detailed error
+                }
+            }
+        });
+    });
 
-				}
-				else if(resp==2){
-					alert_toast("Data successfully updated",'success')
-					setTimeout(function(){
-						location.reload()
-					},1500)
-
-				}
-			}
-		})
-	})
 	$('.edit_department').click(function(){
 		start_load()
 		var cat = $('#manage-department')

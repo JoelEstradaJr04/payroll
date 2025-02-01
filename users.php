@@ -24,7 +24,7 @@ include 'db_connect.php';
                     <tbody>
                     <?php
                         //! Use sqlsrv_query for SQL Server
-                        $sql = "SELECT id, name, username FROM users WHERE isDeleted = 0 ORDER BY name ASC";
+                        $sql = "EXEC SP_Show_User";
                         $stmt = sqlsrv_query($conn, $sql); // Execute query
 
                         if ($stmt === false) { // Check for query errors
