@@ -22,9 +22,9 @@ include 'db_connect.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <?php
+                    <?php
                         //! Use sqlsrv_query for SQL Server
-                        $sql = "SELECT id, name, username FROM users ORDER BY name ASC";
+                        $sql = "SELECT id, name, username FROM users WHERE isDeleted = 0 ORDER BY name ASC";
                         $stmt = sqlsrv_query($conn, $sql); // Execute query
 
                         if ($stmt === false) { // Check for query errors
@@ -33,7 +33,7 @@ include 'db_connect.php';
 
                         $i = 1;
                         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)): // Use sqlsrv_fetch_array
-                            ?>
+                    ?>
                             <tr>
                                 <td><?php echo $i++; ?></td>
                                 <td><?php echo htmlspecialchars($row['name']); ?></td>

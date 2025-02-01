@@ -40,7 +40,7 @@ CREATE TABLE [position] (
 -- Table structure for table [employee]
 CREATE TABLE [employee] (
   [id] INT CONSTRAINT [PK_employee] PRIMARY KEY,
-  [employee_no] NVARCHAR(100) NOT NULL,
+  [employee_no] NVARCHAR(100) CONSTRAINT UC_employee_EmployeeNo UNIQUE,
   [firstname] NVARCHAR(50) NOT NULL,
   [middlename] NVARCHAR(20),
   [lastname] NVARCHAR(50) NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE [payroll_items] (
 -- Table structure for table [users]
 CREATE TABLE [users] (
   [id] INT CONSTRAINT [PK_users] PRIMARY KEY,
-  [employee_id] INT NOT NULL CONSTRAINT UC_Users_Employee UNIQUE,
+  [employee_id] INT NOT NULL,
   [name] VARCHAR(200),
   [username] NVARCHAR(100) NOT NULL CONSTRAINT UC_Username UNIQUE,
   [password] NVARCHAR(200) NOT NULL,
@@ -270,7 +270,7 @@ CREATE TABLE position (
 
 CREATE TABLE employee (
     id INT IDENTITY(1,1) PRIMARY KEY,
-    employee_no NVARCHAR(100) NOT NULL,
+    employee_no NVARCHAR(100),
     firstname NVARCHAR(50) NOT NULL,
     middlename NVARCHAR(20),
     lastname NVARCHAR(50) NOT NULL,

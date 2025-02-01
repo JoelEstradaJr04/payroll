@@ -18,15 +18,15 @@ if($action == 'logout'){
 		echo $logout;
 }
 if($action == 'save_user'){
-	$save = $crud->save_user();
-	if($save)
-		echo $save;
+    $save = $crud->save_user();
+    if($save)
+        echo $save;
 }
 
 if($action == 'delete_user'){
-	$save = $crud->delete_user();
-	if($save)
-		echo $save;
+    $save = $crud->delete_user();
+    if($save)
+        echo $save;
 }
 if($action == "save_employee"){
 	$save = $crud->save_employee();

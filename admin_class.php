@@ -7,10 +7,10 @@ class Action {
     }
 
     private function connect() {
-        $serverName = "DESKTOP-0TVAF8A\SQLEXPRESS";
-        $database = "payroll2";
+        $serverName = "DESKTOP-2A9KFDV\SQLEXPRESS";
+        $database = "payroll";
         $username = "sa";
-        $password = "password"; // Add your password here
+        $password = "abc123"; // Add your password here
 
         $connectionOptions = array(
             "Database" => $database,
@@ -112,7 +112,6 @@ class Action {
 		return 3;
 	}
 	
-
 	function logout(){
 		session_destroy();
 		foreach ($_SESSION as $key => $value) {
@@ -121,23 +120,23 @@ class Action {
 		header("location:login.php");
 	}
 
-	//! DONE
-	function save_user(){
+	// TODO: 
+	function save_user() {
 		extract($_POST);
 		$conn = $this->conn; // Assuming $this->conn is the database connection
-
+	
 		// Prepare stored procedure call using sqlsrv_prepare
 		$query = "EXEC sp_save_user ?, ?, ?, ?, ?, ?";
-		$params = array($id, 9, $name, $username, $password, $type);
-
+		$params = array($id, $employee_id, $name, $username, $password, $type);
+	
 		// Prepare the statement using sqlsrv_prepare
 		$stmt = sqlsrv_prepare($conn, $query, $params);
-
+	
 		// Check if the preparation succeeded
 		if ($stmt === false) {
 			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
 		}
-
+	
 		// Execute the stored procedure
 		if (sqlsrv_execute($stmt)) {
 			// Fetch result
@@ -145,102 +144,127 @@ class Action {
 				return $row['status']; // Should return 1 if successful
 			}
 		}
-
+	
 		return 0; // Failure case
-
 	}
 	
 	//! DONE
 	function delete_user() {
 		extract($_POST);
-		$conn = $this->db; // Database connection
-
-		// Prepare stored procedure call
-		$stmt = $conn->prepare("CALL sp_delete_user(?)");
-		
-		// Bind the id parameter
-		$stmt->bind_param("i", $id);
-		
-		// Execute the procedure
-		$stmt->execute();
-		
-		// Fetch result
-		$result = $stmt->get_result();
-		if ($result) {
-			$row = $result->fetch_assoc();
-			return $row['status']; // Should return 1 if successful
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_user ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
 		}
-
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
 		return 0; // Failure case
 	}
 
-	//! DONE
+	// TODO:
 	function save_employee() {
 		extract($_POST);
-		$conn = $this->db; // Database connection
+		$conn = $this->conn; // Database connection
+	
+		// Define the output parameter
+		$status = 0;
+		$id = ($id) ? $id : 0; // Ensure ID is set to 0 for new records
 	
 		// Prepare stored procedure call
-		$stmt = $conn->prepare("CALL sp_save_employee(?, ?, ?, ?, ?, ?, ?, @status)");
-		
-		// Bind parameters (id can be null)
-		$stmt->bind_param("isssiii", $id, $firstname, $middlename, $lastname, $position_id, $department_id, $salary);
-		
-		// Execute the procedure
-		$stmt->execute();
+		$query = "{CALL sp_save_employee(?, ?, ?, ?, ?, ?, ?, ?)}";
+		$params = array(
+			array(&$id, SQLSRV_PARAM_INOUT), // ID as input/output
+			$firstname,
+			$middlename,
+			$lastname,
+			$department_id,
+			$position_id,
+			$salary,
+			array(&$status, SQLSRV_PARAM_INOUT) // Output status
+		);
 	
-		// Retrieve the output status
-		$result = $conn->query("SELECT @status AS status");
-		if ($result) {
-			$row = $result->fetch_assoc();
-			return $row['status']; // Should return 1 if successful
+		// Execute stored procedure
+		$stmt = sqlsrv_query($conn, $query, $params);
+	
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging
 		}
 	
-		return 0; // Failure case
+		// Return the operation status
+		return $status;
 	}
+	
+	
+	
 	
 	//! DONE
 	function delete_employee() {
 		extract($_POST);
-		$conn = $this->db; // Database connection
+		$conn = $this->conn; // Database connection
 	
-		// Prepare stored procedure call
-		$stmt = $conn->prepare("CALL sp_delete_employee(?)");
-		
-		// Bind the id parameter
-		$stmt->bind_param("i", $id);
-		
-		// Execute the procedure
-		$stmt->execute();
-		
-		// Fetch result
-		$result = $stmt->get_result();
-		if ($result) {
-			$row = $result->fetch_assoc();
-			return $row['status']; // Should return 1 if successful
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_employee ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
 		}
 	
 		return 0; // Failure case
 	}
 	
-	//!DONE
+	// TODO:
 	function save_department() {
 		extract($_POST);
-		$conn = $this->db; // Database connection
+		$conn = $this->conn; // Database connection
 	
-		// Prepare stored procedure call
-		$stmt = $conn->prepare("CALL sp_save_department(?, ?, @status)");
-		
-		// Bind parameters (id can be null)
-		$stmt->bind_param("is", $id, $name);
-		
-		// Execute the procedure
-		$stmt->execute();
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_save_department ?, ?, @status OUTPUT";
+		$params = array($id, $name);
 	
-		// Retrieve the output status
-		$result = $conn->query("SELECT @status AS status");
-		if ($result) {
-			$row = $result->fetch_assoc();
-			return $row['status']; // Should return 1 if successful
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			$result = sqlsrv_query($conn, "SELECT @status AS status");
+			if ($result) {
+				$row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC);
+				return $row['status']; // Should return 1 if successful
+			}
 		}
 	
 		return 0; // Failure case
@@ -249,246 +273,464 @@ class Action {
 	//! DONE
 	function delete_department() {
 		extract($_POST);
-		$conn = $this->db; // Database connection
+		$conn = $this->conn; // Database connection
 	
-		// Prepare stored procedure call
-		$stmt = $conn->prepare("CALL sp_delete_department(?)");
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_department ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+
+	// TODO:
+	function save_position() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_save_position ?, ?, ?, @status OUTPUT";
+		$params = array($id, $name, $department_id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			$result = sqlsrv_query($conn, "SELECT @status AS status");
+			if ($result) {
+				$row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC);
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+	
+	//! DONE
+	function delete_position() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_position ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+
+	// TODO:
+	function save_allowances() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_save_allowances ?, ?, ?, @status OUTPUT";
+		$params = array($id, $allowance, $description);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			$result = sqlsrv_query($conn, "SELECT @status AS status");
+			if ($result) {
+				$row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC);
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+	
+	//! DONE
+	function delete_allowances() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_allowance ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+	
+	// TODO:
+	function save_employee_allowance() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		foreach ($allowance_id as $k => $v) {
+			// Prepare stored procedure call using sqlsrv_prepare
+			$query = "EXEC sp_save_employee_allowance ?, ?, ?, ?, ?, @status OUTPUT";
+			$params = array($employee_id, $allowance_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
+	
+			// Prepare the statement using sqlsrv_prepare
+			$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+			// Check if the preparation succeeded
+			if ($stmt === false) {
+				die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+			}
+	
+			// Execute the stored procedure
+			if (!sqlsrv_execute($stmt)) {
+				return 0; // Failure case
+			}
+		}
+	
+		return 1; // Success case
+	}
+	
+	/// TO BE TESTED
+	function delete_employee_allowance() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_employee_allowance ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+
+	// TODO:
+	function save_deductions() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_save_deduction ?, ?, ?, @status OUTPUT";
+		$params = array($id, $deduction, $description);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			$result = sqlsrv_query($conn, "SELECT @status AS status");
+			if ($result) {
+				$row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC);
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+	
+	//! DONE
+	function delete_deductions() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_deduction ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+	
+	// TODO:
+	function save_employee_deduction() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		foreach ($deduction_id as $k => $v) {
+			// Prepare stored procedure call using sqlsrv_prepare
+			$query = "EXEC sp_save_employee_deduction ?, ?, ?, ?, ?, @status OUTPUT";
+			$params = array($employee_id, $deduction_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
+	
+			// Prepare the statement using sqlsrv_prepare
+			$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+			// Check if the preparation succeeded
+			if ($stmt === false) {
+				die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+			}
+	
+			// Execute the stored procedure
+			if (!sqlsrv_execute($stmt)) {
+				return 0; // Failure case
+			}
+		}
+	
+		return 1; // Success case
+	}
+	
+	/// TO BE TESTED
+	function delete_employee_deduction() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_employee_deduction ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
+	}
+
+	// TODO:
+	function save_employee_attendance() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		foreach ($employee_id as $k => $v) {
+			$datetime_log[$k] = date("Y-m-d H:i", strtotime($datetime_log[$k]));
+	
+			// Prepare stored procedure call using sqlsrv_prepare
+			$query = "EXEC sp_save_employee_attendance ?, ?, ?, @status OUTPUT";
+			$params = array($employee_id[$k], $log_type[$k], $datetime_log[$k]);
+	
+			// Prepare the statement using sqlsrv_prepare
+			$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+			// Check if the preparation succeeded
+			if ($stmt === false) {
+				die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+			}
+	
+			// Execute the stored procedure
+			if (!sqlsrv_execute($stmt)) {
+				return 0; // Failure case
+			}
+		}
+	
+		return 1; // Success case
+	}
+	
+	//! DONE
+	function delete_employee_attendance() {
+		extract($_POST);
+		$date = explode('_', $id);
+		$dt = date("Y-m-d", strtotime($date[1]));
+		$employee_id = $date[0];
 		
-		// Bind the id parameter
-		$stmt->bind_param("i", $id);
-		
-		// Execute the procedure
-		$stmt->execute();
-		
-		// Fetch result
-		$result = $stmt->get_result();
-		if ($result) {
-			$row = $result->fetch_assoc();
-			return $row['status']; // Should return 1 if successful
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_employee_attendance ?, ?";
+		$params = array($employee_id, $dt);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
 		}
 	
 		return 0; // Failure case
 	}
 
 	//! DONE
-	function save_position() {
-		extract($_POST);
-		
-		// Connect to the database
-		$conn = $this->db;
-	
-		// Prepare the stored procedure call
-		$stmt = $conn->prepare("CALL sp_save_position(?, ?, ?)");
-	
-		// Bind parameters
-		$stmt->bind_param("isi", $id, $name, $department_id);
-	
-		// Execute the statement
-		$save = $stmt->execute();
-	
-		// Close the statement
-		$stmt->close();
-	
-		// Return success status
-		if ($save) {
-			return 1;
-		} else {
-			return 0;
-		}
-	}
-	
-	//! DONE
-	function delete_position() {
-		extract($_POST);
-		
-		// Connect to the database
-		$conn = $this->db;
-	
-		// Prepare the stored procedure call
-		$stmt = $conn->prepare("CALL sp_delete_position(?)");
-	
-		// Bind parameters
-		$stmt->bind_param("i", $id);
-	
-		// Execute the statement
-		$delete = $stmt->execute();
-	
-		// Close the statement
-		$stmt->close();
-	
-		// Return success status
-		if ($delete) {
-			return 1;
-		} else {
-			return 0;
-		}
-	}
-
-	//!DONE
-	function save_allowances() {
-		extract($_POST);
-		
-		// Connect to the database
-		$conn = $this->db;
-	
-		// Prepare the stored procedure call
-		$stmt = $conn->prepare("CALL sp_save_allowances(?, ?, ?)");
-	
-		// Bind parameters: 'i' for integer (id), 's' for string (allowance), 's' for string (description)
-		$stmt->bind_param("iss", $id, $allowance, $description);
-	
-		// Execute the statement
-		$save = $stmt->execute();
-	
-		// Close the statement
-		$stmt->close();
-	
-		// Return success status
-		if ($save) {
-			return 1;
-		} else {
-			return 0;
-		}
-	}
-	
-	//! DONE
-	function delete_allowances() {
-		extract($_POST);
-		$stmt = $this->db->prepare("CALL sp_delete_allowance(?)");
-		$stmt->bind_param("i", $id);
-		$stmt->execute();
-		if ($stmt) {
-			return 1;
-		}
-	}
-	
-	//! DONE
-	function save_employee_allowance() {
-		extract($_POST);
-		foreach ($allowance_id as $k => $v) {
-			$stmt = $this->db->prepare("CALL sp_save_employee_allowance(?, ?, ?, ?, ?)");
-			$stmt->bind_param("iisss", $employee_id, $allowance_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
-			$stmt->execute();
-		}
-		return 1;
-	}
-	
-	//! DONE
-	function delete_employee_allowance() {
-		extract($_POST);
-		$stmt = $this->db->prepare("CALL sp_delete_employee_allowance(?)");
-		$stmt->bind_param("i", $id);
-		$stmt->execute();
-		if ($stmt) {
-			return 1;
-		}
-	}
-
-	//! DONE
-	function save_deductions() {
-		extract($_POST);
-		$stmt = $this->db->prepare("CALL sp_save_deduction(?, ?, ?)");
-		$stmt->bind_param("iss", $id, $deduction, $description);
-		$stmt->execute();
-		if ($stmt) {
-			return 1;
-		}
-	}
-	
-	//! DONE
-	function delete_deductions() {
-		extract($_POST);
-		$stmt = $this->db->prepare("CALL sp_delete_deduction(?)");
-		$stmt->bind_param("i", $id);
-		$stmt->execute();
-		if ($stmt) {
-			return 1;
-		}
-	}
-	
-	//! DONE
-	function save_employee_deduction() {
-		extract($_POST);
-		foreach ($deduction_id as $k => $v) {
-			$stmt = $this->db->prepare("CALL sp_save_employee_deduction(?, ?, ?, ?, ?)");
-			$stmt->bind_param("iisss", $employee_id, $deduction_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
-			$stmt->execute();
-		}
-		return 1;
-	}
-	
-	//! DONE
-	function delete_employee_deduction() {
-		extract($_POST);
-		$stmt = $this->db->prepare("CALL sp_delete_employee_deduction(?)");
-		$stmt->bind_param("i", $id);
-		$stmt->execute();
-		if ($stmt) {
-			return 1;
-		}
-	}
-
-	//! DONE
-	function save_employee_attendance() {
-		extract($_POST);
-		foreach ($employee_id as $k => $v) {
-			$datetime_log[$k] = date("Y-m-d H:i", strtotime($datetime_log[$k]));
-			$stmt = $this->db->prepare("CALL sp_save_employee_attendance(?, ?, ?)");
-			$stmt->bind_param("iss", $employee_id[$k], $log_type[$k], $datetime_log[$k]);
-			$stmt->execute();
-		}
-		return 1;
-	}
-	
-	//! DONE
-	function delete_employee_attendance(){
-		extract($_POST);
-		$date = explode('_',$id);
-		$dt = date("Y-m-d",strtotime($date[1]));
- 
-		$delete = $this->db->query("DELETE FROM attendance where employee_id = '".$date[0]."' and date(datetime_log) ='$dt' ");
-		if($delete)
-			return 1;
-	}
-
-	//! DONE
 	function delete_employee_attendance_single() {
 		extract($_POST);
-		$stmt = $this->db->prepare("CALL sp_delete_employee_attendance_single(?)");
-		$stmt->bind_param("i", $id);
-		$stmt->execute();
-		if ($stmt) {
-			return 1;
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_employee_attendance_single ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
 		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
 	}
 	
-	//! DONE
+	// TODO:
 	function save_payroll() {
 		extract($_POST);
-		$ref_no = "";
+		$conn = $this->conn; // Database connection
 	
-		$stmt = $this->db->prepare("CALL sp_save_payroll(?, ?, ?, ?, @ref_no)");
-		$stmt->bind_param("isss", $id, $date_from, $date_to, $type);
-		$stmt->execute();
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_save_payroll ?, ?, ?, ?, @ref_no OUTPUT";
+		$params = array($id, $date_from, $date_to, $type);
 	
-		if (empty($id)) {
-			$result = $this->db->query("SELECT @ref_no AS ref_no");
-			$row = $result->fetch_assoc();
-			$ref_no = $row['ref_no'];
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
 		}
 	
-		return 1;
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if (empty($id)) {
+				$result = sqlsrv_query($conn, "SELECT @ref_no AS ref_no");
+				if ($result) {
+					$row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC);
+					$ref_no = $row['ref_no'];
+				}
+			}
+	
+			return 1; // Success case
+		}
+	
+		return 0; // Failure case
 	}
 	
 	//! DONE
 	function delete_payroll() {
 		extract($_POST);
-		$stmt = $this->db->prepare("CALL sp_delete_payroll(?)");
-		$stmt->bind_param("i", $id);
-		$stmt->execute();
-		if ($stmt) {
-			return 1;
+		$conn = $this->conn; // Database connection
+	
+		// Prepare stored procedure call using sqlsrv_prepare
+		$query = "EXEC sp_delete_payroll ?";
+		$params = array($id);
+	
+		// Prepare the statement using sqlsrv_prepare
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if the preparation succeeded
+		if ($stmt === false) {
+			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
 		}
+	
+		// Execute the stored procedure
+		if (sqlsrv_execute($stmt)) {
+			// Fetch result
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				return $row['status']; // Should return 1 if successful
+			}
+		}
+	
+		return 0; // Failure case
 	}
 	
 	

@@ -40,6 +40,10 @@ if (isset($_GET['id'])) {
     <form action="" id="manage-user">
         <input type="hidden" name="id" value="<?php echo isset($meta['id']) ? $meta['id'] : '' ?>">
         <div class="form-group">
+            <label for="employee_id">Employee ID</label>
+            <input type="text" name="employee_id" id="employee_id" class="form-control" value="<?php echo isset($meta['employee_id']) ? htmlspecialchars($meta['employee_id']) : '' ?>" required>
+        </div>
+        <div class="form-group">
             <label for="name">Name</label>
             <input type="text" name="name" id="name" class="form-control" value="<?php echo isset($meta['name']) ? htmlspecialchars($meta['name']) : '' ?>" required>
         </div>
@@ -78,11 +82,11 @@ if (isset($_GET['id'])) {
                 const cleanResp = resp.replace(/<\/?[^>]+(>|$)/g, "").trim();
                 console.log('Cleaned response:', cleanResp);
                 
-				// Split the string by '/'
-				let parts = cleanResp.split('!');
+                // Split the string by '/'
+                let parts = cleanResp.split('!');
 
-				// Get the last part
-				let lastPart = parts[parts.length - 1];
+                // Get the last part
+                let lastPart = parts[parts.length - 1];
 
                 // Try to parse response as number
                 const response = parseInt(lastPart);
