@@ -72,11 +72,27 @@ if (isset($_GET['id'])) {
             data: $(this).serialize(),
             error: err => console.log(err), // Log errors
             success: function (resp) {
-                if (resp === "1") {
+                console.log(resp);
+
+                // Remove any whitespace and HTML
+                const cleanResp = resp.replace(/<\/?[^>]+(>|$)/g, "").trim();
+                console.log('Cleaned response:', cleanResp);
+                
+				// Split the string by '/'
+				let parts = cleanResp.split('!');
+
+				// Get the last part
+				let lastPart = parts[parts.length - 1];
+
+                // Try to parse response as number
+                const response = parseInt(lastPart);
+                console.log('Parsed response:', response);
+                
+                if (response === 1) {
                     alert_toast("Data successfully saved", 'success');
-                    // setTimeout(function () {
-                    //     location.reload();
-                    // }, 1500);
+                    setTimeout(function () {
+                        location.reload();
+                    }, 1500);
                 } else {
                     console.error("Error saving user:", resp); // Log detailed error
                     alert_toast("Error saving user. Check console.", "danger"); // User-friendly message
