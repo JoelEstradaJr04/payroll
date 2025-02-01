@@ -162,8 +162,14 @@ $(document).ready(function() {
                 const cleanResp = resp.replace(/<\/?[^>]+(>|$)/g, "").trim();
                 console.log('Cleaned response:', cleanResp);
                 
+				// Split the string by '/'
+				let parts = cleanResp.split('!');
+
+				// Get the last part
+				let lastPart = parts[parts.length - 1];
+
                 // Try to parse response as number
-                const response = parseInt(cleanResp);
+                const response = parseInt(lastPart);
                 console.log('Parsed response:', response);
                 
                 if(response === 1) {
