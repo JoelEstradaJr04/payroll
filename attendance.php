@@ -28,7 +28,12 @@
                     </thead>
                     <tbody>
                         <?php
-                        $sql = "SELECT a.*, e.employee_no, concat(e.lastname, ', ', e.firstname, ' ', e.middlename) AS ename FROM attendance a INNER JOIN employee e ON a.employee_id = e.id ORDER BY a.datetime_log ASC"; // SQL Server query
+                        $sql = "SELECT a.*, e.employee_no, CONCAT(e.lastname, ', ', e.firstname, ' ', e.middlename) AS ename 
+                        FROM attendance a 
+                        INNER JOIN employee e ON a.employee_id = e.id 
+                        WHERE a.isDeleted = 0  -- Only include records that are not deleted
+                        ORDER BY a.datetime_log ASC";  // SQL Server query
+                
                         $stmt = sqlsrv_query($conn, $sql);
 
                         if ($stmt === false) {

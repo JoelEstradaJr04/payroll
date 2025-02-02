@@ -631,29 +631,33 @@ class Action {
 	
 			// Define the output parameter
 			$status = 0;
-			$query = "EXEC sp_save_employee_attendance ?, ?, ?, ?";
-			$params = array($employee_id[$k], $log_type[$k], $datetime_log[$k], &$status); // Pass output by reference
+			$outputParam = array(&$status); // Pass by reference
 	
-			// Prepare the statement
-			$stmt = sqlsrv_prepare($conn, $query, $params);
+			$query = "DECLARE @output_status INT; 
+					  EXEC sp_save_employee_attendance ?, ?, ?, @output_status OUTPUT;
+					  SELECT @output_status;";
+	
+			$params = array($employee_id[$k], $log_type[$k], $datetime_log[$k]);
+	
+			// Execute Query
+			$stmt = sqlsrv_query($conn, $query, $params, array("Scrollable" => SQLSRV_CURSOR_STATIC));
 	
 			if ($stmt === false) {
-				die("SQL Prepare Error: " . print_r(sqlsrv_errors(), true)); // Debugging
-			}
-	
-			// Execute the statement
-			if (!sqlsrv_execute($stmt)) {
 				die("SQL Execution Error: " . print_r(sqlsrv_errors(), true)); // Debugging
 			}
 	
-			// Check if the stored procedure set status correctly
+			// Fetch output parameter value
+			sqlsrv_fetch($stmt);
+			$status = sqlsrv_get_field($stmt, 0); 
+	
 			if ($status != 1) {
 				return 0; // Failure case
 			}
 		}
 	
 		return 1; // Success case
-	}	
+	}
+	
 	
 	//! DONE
 	function delete_employee_attendance() {
