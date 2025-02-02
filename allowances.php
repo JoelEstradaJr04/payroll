@@ -53,7 +53,7 @@
 							</thead>
 							<tbody>
 								<?php 
-								$sql = "SELECT * FROM allowances ORDER BY id ASC"; // SQL query
+								$sql = "SELECT * FROM allowances WHERE isDeleted = 0 ORDER BY id ASC"; // SQL query
 								$stmt = sqlsrv_query($conn, $sql); // Execute the query
 
 								if ($stmt === false) { // Check for errors

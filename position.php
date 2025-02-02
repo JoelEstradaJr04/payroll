@@ -61,7 +61,7 @@
                             </thead>
                             <tbody>
                                 <?php
-                                $pos_sql = "SELECT * FROM position ORDER BY id ASC"; // SQL Server query
+                                $pos_sql = "SELECT * FROM position WHERE isDeleted = 0 ORDER BY id ASC"; // Exclude soft-deleted records
                                 $pos_stmt = sqlsrv_query($conn, $pos_sql);
 
                                 if ($pos_stmt === false) {
