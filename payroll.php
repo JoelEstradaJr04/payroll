@@ -22,7 +22,7 @@
 							</thead>
 							<tbody>
 								<?php
-								$payroll_sql = "SELECT * FROM payroll ORDER BY CONVERT(DATE, date_from) DESC"; // Use CONVERT
+								$payroll_sql = "SELECT * FROM payroll WHERE isDeleted = 0 ORDER BY CONVERT(DATE, date_from) DESC"; // Use CONVERT
 								$payroll_stmt = sqlsrv_query($conn, $payroll_sql);
 
 								if ($payroll_stmt === false) {
