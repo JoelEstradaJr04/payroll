@@ -192,20 +192,23 @@ class Action {
 		extract($_POST);
 		$conn = $this->conn; // Database connection
 	
-		// Define the output parameter
+		// Define the output parameters
 		$status = 0;
-		$id = ($id) ? $id : 0; // Ensure ID is set to 0 for new records
+		$id = (!empty($id)) ? $id : 0; // Ensure ID is set to 0 for new records
+		$employee_no = (!empty($employee_no)) ? $employee_no : null;
 	
 		// Prepare stored procedure call
-		$query = "{CALL sp_save_employee(?, ?, ?, ?, ?, ?, ?, ?)}";
+		$query = "{CALL sp_save_employee(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
 		$params = array(
-			array(&$id, SQLSRV_PARAM_INOUT), // ID as input/output
-			$firstname,
-			$middlename,
-			$lastname,
-			$department_id,
-			$position_id,
-			$salary,
+			array(&$id, SQLSRV_PARAM_INOUT), // Employee ID as input/output
+			&$employee_no,  // Employee No (If auto-generated, can be null)
+			&$firstname,
+			&$middlename,
+			&$lastname,
+			&$suffix,
+			&$department_id,
+			&$position_id,
+			&$salary,
 			array(&$status, SQLSRV_PARAM_INOUT) // Output status
 		);
 	
@@ -213,12 +216,12 @@ class Action {
 		$stmt = sqlsrv_query($conn, $query, $params);
 	
 		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging
+			die("Error saving employee: " . print_r(sqlsrv_errors(), true)); // Debugging
 		}
 	
-		// Return the operation status
-		return $status;
+		return $status; // 1 = Insert, 2 = Update, -1 = Not Found, -2 = FK Error
 	}
+	
 	
 	
 	//! DONE
@@ -379,7 +382,7 @@ class Action {
 		return 0; // Failure case
 	}
 
-	// TODO:
+	//! DONE
 	function save_allowances() {
 		extract($_POST);
 		$conn = $this->conn; // Database connection
@@ -413,7 +416,6 @@ class Action {
 		// Return the output status (1 if successful, 0 if failure)
 		return $status;
 	}
-	
 	
 	//! DONE
 	function delete_allowances() {
@@ -498,34 +500,42 @@ class Action {
 		return 0; // Failure case
 	}
 
-	// TODO:
+	//! DONE
 	function save_deductions() {
 		extract($_POST);
 		$conn = $this->conn; // Database connection
 	
-		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "EXEC sp_save_deduction ?, ?, ?, @status OUTPUT";
-		$params = array($id, $deduction, $description);
+		// Ensure ID is set (for new records)
+		$id = isset($id) ? $id : 0;
+		$status = 0; // Output status variable
+	
+		// Prepare stored procedure call
+		$query = "{CALL sp_save_employee_deduction (?, ?, ?, ?, ?)}";
+		$params = array(&$id, $deduction, $description, 0, &$status); // isDeleted default to 0
 	
 		// Prepare the statement using sqlsrv_prepare
 		$stmt = sqlsrv_prepare($conn, $query, $params);
 	
-		// Check if the preparation succeeded
+		// Check if preparation succeeded
 		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+			die("Statement preparation failed: " . print_r(sqlsrv_errors(), true));
 		}
 	
 		// Execute the stored procedure
-		if (sqlsrv_execute($stmt)) {
-			// Fetch result
-			$result = sqlsrv_query($conn, "SELECT @status AS status");
-			if ($result) {
-				$row = sqlsrv_fetch_array($result, SQLSRV_FETCH_ASSOC);
-				return $row['status']; // Should return 1 if successful
-			}
+		if (!sqlsrv_execute($stmt)) {
+			die("Execution failed: " . print_r(sqlsrv_errors(), true));
 		}
 	
-		return 0; // Failure case
+		// Fetch the output status manually
+		$query_status = "SELECT @status AS status";
+		$stmt_status = sqlsrv_query($conn, $query_status);
+	
+		if ($stmt_status === false) {
+			die("Status retrieval failed: " . print_r(sqlsrv_errors(), true));
+		}
+	
+		$row = sqlsrv_fetch_array($stmt_status, SQLSRV_FETCH_ASSOC);
+		return $row ? $row['status'] : 0; // Return the output status
 	}
 	
 	//! DONE
