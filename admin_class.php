@@ -7,10 +7,11 @@ class Action {
     }
 
     private function connect() {
-        $serverName = "DESKTOP-2A9KFDV\SQLEXPRESS";
-        $database = "PAYROLL2";
+        $serverName = "ESTRADAJR\SQLEXPRESS";
+        $database = "payroll";
         $username = "sa";
-        $password = "abc123"; // Add your password here
+        $password = "password"; // Add your password here
+
 
         $connectionOptions = array(
             "Database" => $database,

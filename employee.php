@@ -16,6 +16,7 @@
                             <th>Firstname</th>
                             <th>Middlename</th>
                             <th>Lastname</th>
+                            <th>Suffix</th>
                             <th>Department</th>
                             <th>Position</th>
                             <th>Action</th>
@@ -48,7 +49,7 @@
                         sqlsrv_free_stmt($pos_stmt); // Free statement resource
 
 
-                        $employee_sql = "EXEC SP_Show_Employee"; // SQL Server query
+                        $employee_sql = "EXEC sp_show_employee"; // SQL Server query
                         $employee_stmt = sqlsrv_query($conn, $employee_sql);
                         if ($employee_stmt === false) {
                             die(print_r(sqlsrv_errors(), true)); // Error handling
@@ -61,6 +62,7 @@
                                 <td><?php echo $row['firstname']; ?></td>
                                 <td><?php echo $row['middlename']; ?></td>
                                 <td><?php echo $row['lastname']; ?></td>
+                                <td><?php echo $row['suffix']; ?></td>
                                 <td><?php echo $d_arr[$row['department_id']]; ?></td>
                                 <td><?php echo $p_arr[$row['position_id']]; ?></td>
                                 <td>
