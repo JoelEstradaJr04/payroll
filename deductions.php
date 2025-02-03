@@ -45,7 +45,7 @@
                             </thead>
                             <tbody>
                                 <?php
-                                $sql = "EXEC SP_Show_Deduction"; // SQL Server query
+                                $sql = "EXEC sp_show_deduction"; // SQL Server query
                                 $stmt = sqlsrv_query($conn, $sql);
 
                                 if ($stmt === false) {

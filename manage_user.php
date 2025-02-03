@@ -40,9 +40,26 @@ if (isset($_GET['id'])) {
     <form action="" id="manage-user">
         <input type="hidden" name="id" value="<?php echo isset($meta['id']) ? $meta['id'] : '' ?>">
         <div class="form-group">
-            <label for="name">Name</label>
-            <input type="text" name="name" id="name" class="form-control" value="<?php echo isset($meta['name']) ? htmlspecialchars($meta['name']) : '' ?>" required>
+            <label for="employee_no">Employee No.</label>
+            <input type="text" name="employee_no" id="employee_no" class="form-control" value="<?php echo isset($meta['employee_no']) ? htmlspecialchars($meta['employee_no']) : '' ?>" required>
         </div>
+        <div class="form-group">
+            <label for="firstname">First Name</label>
+            <input type="text" name="firstname" id="firstname" class="form-control" value="<?php echo isset($meta['firstname']) ? htmlspecialchars($meta['firstname']) : '' ?>" required>
+        </div>
+        <div class="form-group">
+            <label for="middlename">Middle Name</label>
+            <input type="text" name="middlename" id="middlename" class="form-control" value="<?php echo isset($meta['middlename']) ? htmlspecialchars($meta['middlename']) : '' ?>" required>
+        </div>
+        <div class="form-group">
+            <label for="lastname">Last Name</label>
+            <input type="text" name="lastname" id="lastname" class="form-control" value="<?php echo isset($meta['lastname']) ? htmlspecialchars($meta['lastname']) : '' ?>" required>
+        </div>
+        <div class="form-group">
+            <label for="suffix">Suffix</label>
+            <input type="text" name="suffix" id="suffix" class="form-control" value="<?php echo isset($meta['suffix']) ? htmlspecialchars($meta['suffix']) : '' ?>" required>
+        </div>
+
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" name="username" id="username" class="form-control" value="<?php echo isset($meta['username']) ? htmlspecialchars($meta['username']) : '' ?>" required>
@@ -63,41 +80,30 @@ if (isset($_GET['id'])) {
 </div>
 
 <script>
-    $('#manage-user').submit(function (e) {
-        e.preventDefault();
-        start_load();
-        $.ajax({
-            url: 'ajax.php?action=save_user',
-            method: 'POST',
-            data: $(this).serialize(),
-            error: err => console.log(err), // Log errors
-            success: function (resp) {
-                console.log(resp);
+$('#manage-user').submit(function (e) {
+    e.preventDefault();
+    start_load();
+    $.ajax({
+        url: 'ajax.php?action=save_user',
+        method: 'POST',
+        data: $(this).serialize(),
+        dataType: 'json', // Expect JSON response
+        error: function(err) {
+            console.log("AJAX Error:", err);
+        },
+        success: function(resp) {
+            console.log("Server Response:", resp);
 
-                // Remove any whitespace and HTML
-                const cleanResp = resp.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                console.log('Cleaned response:', cleanResp);
-                
-                // Split the string by '/'
-                let parts = cleanResp.split('!');
-
-                // Get the last part
-                let lastPart = parts[parts.length - 1];
-
-                // Try to parse response as number
-                const response = parseInt(lastPart);
-                console.log('Parsed response:', response);
-                
-                if (response === 1) {
-                    alert_toast("Data successfully saved", 'success');
-                    setTimeout(function () {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    console.error("Error saving user:", resp); // Log detailed error
-                    alert_toast("Error saving user. Check console.", "danger"); // User-friendly message
-                }
+            if (resp.success) {
+                alert_toast(resp.message, 'success');
+                setTimeout(function () {
+                    location.reload();
+                }, 1500);
+            } else {
+                alert_toast(resp.message, 'danger');
             }
-        });
+        }
     });
+});
+
 </script>

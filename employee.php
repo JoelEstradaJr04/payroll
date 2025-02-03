@@ -24,35 +24,11 @@
                     </thead>
                     <tbody>
                         <?php
-                        $d_arr[0] = "Unset";
-                        $p_arr[0] = "Unset";
-
-                        $dept_sql = "SELECT * FROM department ORDER BY name ASC"; // SQL Server query
-                        $dept_stmt = sqlsrv_query($conn, $dept_sql);
-                        if ($dept_stmt === false) {
-                            die(print_r(sqlsrv_errors(), true)); // Error handling
-                        }
-                        while ($row = sqlsrv_fetch_array($dept_stmt, SQLSRV_FETCH_ASSOC)):
-                            $d_arr[$row['id']] = $row['name'];
-                        endwhile;
-                        sqlsrv_free_stmt($dept_stmt); // Free statement resource
-
-
-                        $pos_sql = "SELECT * FROM position ORDER BY name ASC"; // SQL Server query
-                        $pos_stmt = sqlsrv_query($conn, $pos_sql);
-                        if ($pos_stmt === false) {
-                            die(print_r(sqlsrv_errors(), true)); // Error handling
-                        }
-                        while ($row = sqlsrv_fetch_array($pos_stmt, SQLSRV_FETCH_ASSOC)):
-                            $p_arr[$row['id']] = $row['name'];
-                        endwhile;
-                        sqlsrv_free_stmt($pos_stmt); // Free statement resource
-
-
-                        $employee_sql = "EXEC sp_show_employee"; // SQL Server query
+                        $employee_sql = "SELECT * FROM EmployeeDetailsView ORDER BY employee_no";
                         $employee_stmt = sqlsrv_query($conn, $employee_sql);
+
                         if ($employee_stmt === false) {
-                            die(print_r(sqlsrv_errors(), true)); // Error handling
+                            die(print_r(sqlsrv_errors(), true));
                         }
 
                         while ($row = sqlsrv_fetch_array($employee_stmt, SQLSRV_FETCH_ASSOC)) {
@@ -63,8 +39,8 @@
                                 <td><?php echo $row['middlename']; ?></td>
                                 <td><?php echo $row['lastname']; ?></td>
                                 <td><?php echo $row['suffix']; ?></td>
-                                <td><?php echo $d_arr[$row['department_id']]; ?></td>
-                                <td><?php echo $p_arr[$row['position_id']]; ?></td>
+                                <td><?php echo $row['department_name']; ?></td>
+                                <td><?php echo $row['position_name']; ?></td>
                                 <td>
                                     <center>
                                         <button class="btn btn-sm btn-outline-primary view_employee" data-id="<?php echo $row['id']; ?>" type="button"><i class="fa fa-eye"></i></button>
@@ -75,7 +51,7 @@
                             </tr>
                             <?php
                         }
-                        sqlsrv_free_stmt($employee_stmt); // Free statement resource
+                        sqlsrv_free_stmt($employee_stmt);
                         ?>
                     </tbody>
                 </table>
@@ -83,7 +59,6 @@
         </div>
     </div>
 </div>
-
 <script type="text/javascript">
     $(document).ready(function () {
         $('#table').DataTable();

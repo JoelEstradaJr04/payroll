@@ -339,17 +339,19 @@ INSERT INTO [attendance] ([employee_id], [log_type], [datetime_log], [date_updat
 (9, 4, '2024-07-27 17:00:00', GETDATE());
 
 -- Insert data into users
-INSERT INTO [users] ([employee_id], [name], [username], [password], [type]) VALUES
-(1, 'Isaac Newton', 'isaac.newton', '3l@wsofmotion', 1),
-(3, 'Jennifer Lopez Lawrence', 'jennifer.lopez.lawrence', 'hungerg@mes', 0);
+INSERT INTO [users] ([employee_id], [username], [password], [type]) VALUES
+(1, 'isaac.newton', '3l@wsofmotion', 1),
+(3, 'jennifer.lopez.lawrence', 'hungerg@mes', 0);
 GO
 
--- Create VIEW tables
+/* 
+** Create VIEW tables
+*/
 
--- View Payroll_Items
+-- View Payroll_Items [UPDATED, NEW!]
 CREATE VIEW PayrollItemsWithRefNo AS
 SELECT
-    pi.id AS payroll_item_id,
+    pi.id AS payroll_item_id,  -- Explicitly name the payroll_items ID
     p.ref_no,
     pi.payroll_id,
     pi.employee_id,
@@ -370,8 +372,8 @@ INNER JOIN
     payroll p ON pi.payroll_id = p.id;
 GO
 
--- VIEW Users
-CREATE VIEW EmployeeUserView AS 
+-- VIEW Users [UPDATED, NEW!]
+CREATE VIEW EmployeeUserView AS  -- Use ALTER VIEW to modify an existing view
 SELECT
     e.id AS employee_id,
     e.employee_no,
@@ -390,6 +392,24 @@ SELECT
     u.isDeleted AS user_isDeleted,
     e.isDeleted AS employee_isDeleted
 FROM employee e
-INNER JOIN users u ON e.id = u.employee_id 
+INNER JOIN users u ON e.id = u.employee_id  -- Changed to INNER JOIN
 WHERE e.isDeleted = 0
-  AND u.isDeleted = 0; 
+  AND u.isDeleted = 0;  -- Filter deleted records from BOTH tables
+GO
+
+
+-- VIEW Employee Details [UPDATED, NEW!]
+CREATE VIEW EmployeeDetailsView AS
+SELECT
+    e.employee_no,
+    e.firstname,
+    e.middlename,
+    e.lastname,
+    e.suffix,
+    d.name AS department_name,
+    p.name AS position_name,
+    e.id  -- Include employee ID for actions
+FROM employee e
+INNER JOIN department d ON e.department_id = d.id
+INNER JOIN position p ON e.position_id = p.id
+WHERE e.isDeleted = 0;

@@ -16,18 +16,16 @@
                                 <select class="custom-select browser-default select2" name="department_id">
                                     <option value=""></option>
                                     <?php
-                                    $dept_sql = "SELECT * FROM department ORDER BY name ASC"; // SQL Server query
-                                    $dept_stmt = sqlsrv_query($conn, $dept_sql);
-
-                                    if ($dept_stmt === false) {
-                                        die(print_r(sqlsrv_errors(), true)); // Error handling
+                                    $sql = "EXEC sp_show_department";  // Call the SP for departments
+                                    $stmt = sqlsrv_query($conn, $sql);
+                                    if ($stmt === false) {
+                                        die(print_r(sqlsrv_errors(), true));
                                     }
-
-                                    while ($row = sqlsrv_fetch_array($dept_stmt, SQLSRV_FETCH_ASSOC)):
+                                    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
                                         ?>
                                         <option value="<?php echo $row['id']; ?>"><?php echo $row['name']; ?></option>
                                     <?php endwhile;
-                                    sqlsrv_free_stmt($dept_stmt); // Free statement resource
+                                    sqlsrv_free_stmt($stmt);
                                     ?>
                                 </select>
                             </div>
@@ -54,35 +52,35 @@
                         <table class="table table-bordered table-hover">
                             <thead>
                                 <tr>
-                                    <th class="text-center">#</th>
+                                    <!-- <th class="text-center">#</th> -->
                                     <th class="text-center">Position</th>
+                                    <th class="text-center">Department</th>
                                     <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
-                                $pos_sql = "SELECT * FROM position WHERE isDeleted = 0 ORDER BY id ASC"; // Exclude soft-deleted records
-                                $pos_stmt = sqlsrv_query($conn, $pos_sql);
+                                $sql = "EXEC sp_show_positions"; // Call the combined SP
+                                $stmt = sqlsrv_query($conn, $sql);
 
-                                if ($pos_stmt === false) {
-                                    die(print_r(sqlsrv_errors(), true)); // Error handling
+                                if ($stmt === false) {
+                                    die(print_r(sqlsrv_errors(), true));
                                 }
 
                                 $i = 1;
-                                while ($row = sqlsrv_fetch_array($pos_stmt, SQLSRV_FETCH_ASSOC)):
+                                while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)):
                                     ?>
                                     <tr>
-                                        <td class="text-center"><?php echo $i++; ?></td>
-                                        <td class="">
-                                            <p><b><?php echo $row['name']; ?></b></p>
-                                        </td>
+                                        <!-- <td class="text-center"><?php echo $i++; ?></td> -->
+                                        <td><b><?php echo $row['position_name']; ?></b></td>
+                                        <td><?php echo $row['department_name']; ?></td>
                                         <td class="text-center">
-                                            <button class="btn btn-sm btn-primary edit_position" type="button" data-id="<?php echo $row['id']; ?>" data-name="<?php echo $row['name']; ?>" data-department_id="<?php echo $row['department_id']; ?>">Edit</button>
-                                            <button class="btn btn-sm btn-danger delete_position" type="button" data-id="<?php echo $row['id']; ?>">Delete</button>
+                                            <button class="btn btn-sm btn-primary edit_position" type="button" data-id="<?php echo $row['position_id']; ?>" data-name="<?php echo $row['position_name']; ?>" data-department_id="<?php echo $row['department_id']; ?>">Edit</button>
+                                            <button class="btn btn-sm btn-danger delete_position" type="button" data-id="<?php echo $row['position_id']; ?>">Delete</button>
                                         </td>
                                     </tr>
                                 <?php endwhile;
-                                sqlsrv_free_stmt($pos_stmt); // Free statement resource
+                                sqlsrv_free_stmt($stmt);
                                 ?>
                             </tbody>
                         </table>

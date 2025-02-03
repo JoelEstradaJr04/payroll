@@ -121,42 +121,56 @@ class Action {
 		header("location:login.php");
 	}
 
-	//! DONE
+	//! DONE [UPDATED!!!]
 	function save_user(){
-	extract($_POST);
-	$conn = $this->conn; // Assuming $this->conn is the database connection
-
-	// Prepare stored procedure call using sqlsrv_prepare
-	$query = "EXEC sp_save_user ?, ?, ?, ?, ?, ?";
-	$params = array($id, 9, $name, $username, $password, $type);
-
-	// Prepare the statement using sqlsrv_prepare
-	$stmt = sqlsrv_prepare($conn, $query, $params);
-
-	// Check if the preparation succeeded
-	if ($stmt === false) {
-		die("Statement preparation failed: " . print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		extract($_POST);
+		$conn = $this->conn; // Ensure $this->conn is properly initialized
+	
+		// Hash password before inserting
+		$hashed_password = password_hash($password, PASSWORD_DEFAULT);
+	
+		// Prepare stored procedure call
+		$query = "{CALL sp_save_user(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
+	
+		// Define output parameters
+		$status = 0;  // Will hold the stored procedure return value
+		$message = ""; // Will hold the stored procedure return message
+	
+		// Ensure all parameters are passed correctly
+		$params = array(
+			$firstname,  // @FirstName
+			$middlename, // @MiddleName
+			$lastname,   // @LastName
+			$suffix,     // @Suffix
+			$employee_no, // @EmployeeNo
+			$username,   // @Username
+			$hashed_password, // @Password (hashed)
+			$type,       // @Type
+			array(&$status, SQLSRV_PARAM_OUT), // @Status OUTPUT
+			array(&$message, SQLSRV_PARAM_OUT) // @Message OUTPUT
+		);
+	
+		// Prepare the statement
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		// Check if preparation succeeded
+		if ($stmt === false) {
+			die("Statement preparation failed: " . print_r(sqlsrv_errors(), true));
+		}
+	
+		// Execute the stored procedure
+		if (!sqlsrv_execute($stmt)) {
+			die("Execution failed: " . print_r(sqlsrv_errors(), true));
+		} 
+	
+		// Check the stored procedure output status
+		if ($status == 1) {
+			return json_encode(['success' => true, 'message' => $message]);
+		} else {
+			return json_encode(['success' => false, 'message' => $message]);
+		}
 	}
-
-	// Execute the stored procedure
-	if (!sqlsrv_execute($stmt)) {
-		die("Execution failed: " . print_r(sqlsrv_errors(), true)); // Debugging if execution fails
-	} 
-
-	// Fetch result
-	$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-	if ($row) {
-		return $row['status']; // Should return 1 if successful
-	}
-
-	// Check for additional SQL errors
-	if ($errors = sqlsrv_errors()) {
-		die("SQL Server Error: " . print_r($errors, true));
-	}
-
-	return 0; // Failure case
-
-	}
+	
 	//! DONE
 	function delete_user() {
 		extract($_POST);

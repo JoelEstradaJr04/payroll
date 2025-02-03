@@ -15,7 +15,7 @@ include 'db_connect.php';
                 <table class="table-striped table-bordered col-md-12">
                     <thead>
                         <tr>
-                            <th class="text-center">No.</th>
+                            <th class="text-center">Employee No.</th>
                             <th class="text-center">Full Name</th>
                             <th class="text-center">Username</th>
                             <th class="text-center">Action</th>
@@ -35,7 +35,7 @@ include 'db_connect.php';
                         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)): // Use sqlsrv_fetch_array
                     ?>
                             <tr>
-                                <td><?php echo $i++; ?></td>
+                                <td><?php echo htmlspecialchars($row['employee_no']); ?></td>
                                 <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                 <td><?php echo htmlspecialchars($row['username']); ?></td>
                                 <td>

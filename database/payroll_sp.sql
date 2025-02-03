@@ -1,50 +1,75 @@
 USE [payroll]
 GO
-CREATE PROCEDURE [dbo].[sp_save_user]
-    @p_id INT,
-    @emp_no INT,
-    @p_name VARCHAR(255),
-    @p_username VARCHAR(255),
-    @p_password VARCHAR(255),
-    @p_type BIT
+
+-- sp_save_user [UPDATED!!!]
+
+ALTER PROCEDURE sp_save_user
+    @FirstName NVARCHAR(100),
+    @MiddleName NVARCHAR(100),
+    @LastName NVARCHAR(100),
+    @Suffix NVARCHAR(10),
+    @EmployeeNo NVARCHAR(50),
+    @Username NVARCHAR(50),
+    @Password NVARCHAR(255),
+    @Type INT,
+    @Status INT OUTPUT,
+    @Message NVARCHAR(255) OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Check if id is NULL or 0 (Insert case)
-    IF @p_id IS NULL OR @p_id = 0
-    BEGIN
-        INSERT INTO users (employee_id, name, username, password, type) 
-        VALUES (@emp_no, @p_name, @p_username, @p_password, @p_type);
-    END
-    ELSE
-    BEGIN
-        -- Update case
-        UPDATE users 
-        SET name = @p_name, 
-            username = @p_username, 
-            password = @p_password, 
-            type = @p_type
-        WHERE id = @p_id;
-    END
+    BEGIN TRY
+        DECLARE @EmployeeId INT;
 
-    -- Return success
-    SELECT 1 AS status;
+        -- Check if employee exists
+        SELECT @EmployeeId = id 
+        FROM employee 
+        WHERE firstname = @FirstName
+            AND middlename = @MiddleName
+            AND lastname = @LastName
+            AND suffix = @Suffix
+            AND employee_no = @EmployeeNo
+            AND isDeleted = 0;
+
+        IF @EmployeeId IS NULL
+        BEGIN
+            SET @Status = 0;
+            SET @Message = 'Employee not found';
+            RETURN;
+        END
+
+        -- Check if employee already has a user account
+        IF EXISTS (SELECT 1 FROM users WHERE employee_id = @EmployeeId AND isDeleted = 0)
+        BEGIN
+            SET @Status = 0;
+            SET @Message = 'Employee already has a user account';
+            RETURN;
+        END
+
+        -- Check if username exists
+        IF EXISTS (SELECT 1 FROM users WHERE username = @Username AND isDeleted = 0)
+        BEGIN
+            SET @Status = 0;
+            SET @Message = 'Username already exists';
+            RETURN;
+        END
+
+        -- Insert user record
+        INSERT INTO users (employee_id, username, password, type, isDeleted)
+        VALUES (@EmployeeId, @Username, @Password, @Type, 0);
+
+        -- Get the newly inserted user ID
+        DECLARE @NewUserId INT = SCOPE_IDENTITY();
+
+        -- Output success message
+        SET @Status = 1;
+        SET @Message = 'User successfully created with ID: ' + CAST(@NewUserId AS NVARCHAR(10));
+    END TRY
+    BEGIN CATCH
+        SET @Status = 0;
+        SET @Message = ERROR_MESSAGE();
+    END CATCH
 END
-GO
-
--- sp_delete_allowance
-CREATE PROCEDURE [dbo].[sp_delete_allowance]
-    @p_id INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- Soft delete: Update isDeleted flag instead of deleting the record
-    UPDATE allowances
-    SET isDeleted = 1
-    WHERE id = @p_id;
-END;
 GO
 
 -- sp_delete_deduction
@@ -476,7 +501,7 @@ BEGIN
 END
 GO
 
--- sp_show_deduction
+-- sp_show_deduction [UPDATED]
 
 CREATE PROCEDURE [dbo].[sp_show_deduction]
 AS
@@ -488,19 +513,19 @@ BEGIN
 END
 GO
 
--- sp_show_department
+-- sp_show_department [UPDATED]
 
-CREATE PROCEDURE [dbo].[sp_show_department] 
-AS 
+CREATE PROCEDURE sp_show_department
+AS
 BEGIN
-	SELECT * 
-		FROM department 
-		WHERE isDeleted= 0
-		ORDER BY id ASC
-END
+    SELECT id, name
+    FROM department
+    WHERE isDeleted = 0
+    ORDER BY name ASC;
+END;
 GO
 
--- sp_show_employee
+-- sp_show_employee [UNNECESSARY]
 
 CREATE PROCEDURE [dbo].[sp_show_employee] 
 AS 
@@ -511,7 +536,7 @@ BEGIN
 END
 GO
 
--- sp_show_user [updated]
+-- sp_show_user [UNNECESSARY]
 
 CREATE PROCEDURE [dbo].[sp_show_user]
 AS
@@ -528,3 +553,33 @@ BEGIN
     WHERE u.isDeleted = 0
     ORDER BY u.name ASC;
 END;
+GO
+
+-- sp_show_allowances [UPDATED, NEW!]
+CREATE PROCEDURE sp_show_allowances
+AS
+BEGIN
+    SELECT * 
+    FROM allowances 
+    WHERE isDeleted = 0 
+    ORDER BY id ASC;
+END;
+GO
+
+-- sp_show_positions [UPDATED, NEW!]
+
+CREATE PROCEDURE sp_show_positions
+AS
+BEGIN
+    SELECT
+        d.id AS department_id,
+        d.name AS department_name,
+        p.id AS position_id,
+        p.name AS position_name
+    FROM department d
+    INNER JOIN position p ON d.id = p.department_id
+    WHERE d.isDeleted = 0
+      AND p.isDeleted = 0
+    ORDER BY d.name, p.name ASC;  -- Order by department then position
+END;
+GO
