@@ -450,37 +450,54 @@ class Action {
 		$conn = $this->conn; // Database connection
 	
 		foreach ($allowance_id as $k => $v) {
-			// Prepare stored procedure call using sqlsrv_prepare
-			$query = "EXEC sp_save_employee_allowance ?, ?, ?, ?, ?, @status OUTPUT";
-			$params = array($employee_id, $allowance_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
+			$status = 0; // Initialize status variable
 	
-			// Prepare the statement using sqlsrv_prepare
+			// Define query with OUTPUT parameter
+			$query = "EXEC sp_save_employee_allowance ?, ?, ?, ?, ?, ?";
+			$params = array(
+				$employee_id,
+				$allowance_id[$k],
+				$type[$k],
+				$amount[$k],
+				$effective_date[$k],
+				array(&$status, SQLSRV_PARAM_OUT) // Bind output parameter
+			);
+	
+			// Prepare and execute
 			$stmt = sqlsrv_prepare($conn, $query, $params);
 	
-			// Check if the preparation succeeded
 			if ($stmt === false) {
-				die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+				die("Error in SQL Prepare: " . print_r(sqlsrv_errors(), true)); 
 			}
 	
-			// Execute the stored procedure
 			if (!sqlsrv_execute($stmt)) {
-				return 0; // Failure case
+				die("Error in SQL Execute: " . print_r(sqlsrv_errors(), true)); 
+			}
+	
+			// Check if status is successful
+			if ($status != 1) {
+				return 0; // Return failure
 			}
 		}
 	
-		return 1; // Success case
+		return 1; // Return success
 	}
 	
 	/// TO BE TESTED
 	function delete_employee_allowance() {
 		extract($_POST);
 		$conn = $this->conn; // Database connection
+		
+		$status = 0; // Output variable
 	
 		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "EXEC sp_delete_employee_allowance ?";
-		$params = array($id);
+		$query = "{CALL sp_delete_employee_allowance(?, ?)}";
+		$params = array(
+			array($id, SQLSRV_PARAM_IN),
+			array(&$status, SQLSRV_PARAM_OUT) // Output parameter
+		);
 	
-		// Prepare the statement using sqlsrv_prepare
+		// Prepare the statement
 		$stmt = sqlsrv_prepare($conn, $query, $params);
 	
 		// Check if the preparation succeeded
@@ -490,14 +507,12 @@ class Action {
 	
 		// Execute the stored procedure
 		if (sqlsrv_execute($stmt)) {
-			// Fetch result
-			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-				return $row['status']; // Should return 1 if successful
-			}
+			return $status; // Return the status from the stored procedure
 		}
 	
 		return 0; // Failure case
 	}
+	
 
 	//! DONE
 	function save_deductions() {
