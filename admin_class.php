@@ -10,8 +10,7 @@ class Action {
         $serverName = "ESTRADAJR\SQLEXPRESS";
         $database = "payroll";
         $username = "sa";
-        $password = "password"; // Add your password here
-
+        $password = "password";
 
         $connectionOptions = array(
             "Database" => $database,
@@ -22,15 +21,16 @@ class Action {
 
         try {
             $this->conn = sqlsrv_connect($serverName, $connectionOptions);
-            
-            if($this->conn === false) {
+
+            if ($this->conn === false) {
                 $errors = sqlsrv_errors();
                 throw new Exception("Connection failed: " . ($errors ? $errors[0]['message'] : 'Unknown error'));
             }
-            echo "<div class='alert alert-success' role='alert'>Successfully connected to the database!</div>";
-        } catch(Exception $e) {
-            echo "<div class='alert alert-danger' role='alert'>" . $e->getMessage() . "</div>";
-            die();
+            // REMOVE THIS LINE: echo "<div class='alert alert-success' role='alert'>Successfully connected to the database!</div>";
+        } catch (Exception $e) {
+            // Log the error, but don't echo it directly.  Handle it where you call connect()
+            error_log($e->getMessage()); 
+            die(json_encode(['success' => false, 'message' => 'Database connection error.'])); // Return JSON error
         }
     }
 
@@ -39,79 +39,58 @@ class Action {
             sqlsrv_close($this->conn);
         }
     }
+
+	//! DONE [UPDATED!!!, NEW]
 	public function login() {
-		// Start session if not already started
-		if (session_status() === PHP_SESSION_NONE) {
-			session_start();
-		}
-	
-		if (!isset($_POST['username']) || !isset($_POST['password'])) {
-			return 3;
+		if(!isset($_POST['username']) || !isset($_POST['password'])) {
+			return json_encode(['status' => 0, 'message' => 'Missing credentials']);
 		}
 	
 		$username = $_POST['username'];
 		$password = $_POST['password'];
+		
+		$status = 0;
+		$message = '';
 	
-		$query = "SELECT id, employee_id, name, username, type 
-				  FROM users 
-				  WHERE username = ? 
-				  AND password = ? 
-				  AND isDeleted = 0";
+		$query = "{CALL sp_login (?, ?, ?, ?)}";
+		$params = array(
+			array($username, SQLSRV_PARAM_IN),
+			array($password, SQLSRV_PARAM_IN),
+			array(&$status, SQLSRV_PARAM_OUT),
+			array(&$message, SQLSRV_PARAM_OUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR), SQLSRV_SQLTYPE_NVARCHAR(255))
+		);
 	
-		// Prepare the statement with parameters passed by reference
-		$stmt = sqlsrv_prepare($this->conn, $query, array(&$username, &$password));
-	
-		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging
-			return 3;
+		$stmt = sqlsrv_prepare($this->conn, $query, $params);
+		
+		if($stmt === false) {
+			return json_encode(['status' => 0, 'message' => 'Database error: ' . print_r(sqlsrv_errors(), true)]);
 		}
 	
-		if (sqlsrv_execute($stmt)) {
-			$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		if(sqlsrv_execute($stmt) === false) {
+			return json_encode(['status' => 0, 'message' => 'Execution error: ' . print_r(sqlsrv_errors(), true)]);
+		}
 	
-			if ($row) {
-				// Store user data in session
-				foreach ($row as $key => $value) {
-					if ($key != 'password') {
-						$_SESSION['login_' . $key] = $value;
-					}
+		// Get user data for session if login successful
+		if($status == 1) {
+			$qry = "SELECT u.*, CONCAT(e.firstname,' ',e.lastname) as name 
+					FROM users u 
+					LEFT JOIN employee e ON u.employee_id = e.id 
+					WHERE u.username = ? AND u.isDeleted = 0";
+			
+			$stmt2 = sqlsrv_prepare($this->conn, $qry, array($username));
+			sqlsrv_execute($stmt2);
+			$row = sqlsrv_fetch_array($stmt2, SQLSRV_FETCH_ASSOC);
+			
+			foreach($row as $key => $value) {
+				if($key != 'password') {
+					$_SESSION['login_'.$key] = $value;
 				}
-	
-				// Get employee details
-				$emp_query = "SELECT firstname, lastname, department_id, position_id 
-							  FROM employee 
-							  WHERE id = ? 
-							  AND isDeleted = 0";
-	
-				$emp_stmt = sqlsrv_prepare($this->conn, $emp_query, array(&$row['employee_id']));
-	
-				if ($emp_stmt === false) {
-					die(print_r(sqlsrv_errors(), true)); // Debugging
-					return 3;
-				}
-	
-				if (sqlsrv_execute($emp_stmt)) {
-					$emp_row = sqlsrv_fetch_array($emp_stmt, SQLSRV_FETCH_ASSOC);
-					if ($emp_row) {
-						foreach ($emp_row as $key => $value) {
-							$_SESSION['login_' . $key] = $value;
-						}
-					}
-				}
-	
-				sqlsrv_free_stmt($emp_stmt);
-				sqlsrv_free_stmt($stmt);
-	
-				// Set a login ID to check redirect condition
-				$_SESSION['login_id'] = $row['id'];
-	
-				return 1;
 			}
 		}
 	
-		sqlsrv_free_stmt($stmt);
-		return 3;
+		return json_encode(['status' => $status, 'message' => $message]);
 	}
+
 	
 	function logout(){
 		session_destroy();
@@ -124,83 +103,129 @@ class Action {
 	//! DONE [UPDATED!!!]
 	function save_user(){
 		extract($_POST);
-		$conn = $this->conn; // Ensure $this->conn is properly initialized
+		$conn = $this->conn;
 	
-		// Hash password before inserting
 		$hashed_password = password_hash($password, PASSWORD_DEFAULT);
 	
-		// Prepare stored procedure call
 		$query = "{CALL sp_save_user(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
 	
-		// Define output parameters
-		$status = 0;  // Will hold the stored procedure return value
-		$message = ""; // Will hold the stored procedure return message
+		$status = 0;
+		$message = "";
 	
-		// Ensure all parameters are passed correctly
 		$params = array(
-			$firstname,  // @FirstName
-			$middlename, // @MiddleName
-			$lastname,   // @LastName
-			$suffix,     // @Suffix
-			$employee_no, // @EmployeeNo
-			$username,   // @Username
-			$hashed_password, // @Password (hashed)
-			$type,       // @Type
-			array(&$status, SQLSRV_PARAM_OUT), // @Status OUTPUT
-			array(&$message, SQLSRV_PARAM_OUT) // @Message OUTPUT
+			$firstname,
+			$middlename,
+			$lastname,
+			$suffix,
+			$employee_no,
+			$username,
+			$hashed_password,
+			$type,
+			array(&$status, SQLSRV_PARAM_OUT),
+			array(&$message, SQLSRV_PARAM_OUT)
 		);
 	
-		// Prepare the statement
 		$stmt = sqlsrv_prepare($conn, $query, $params);
 	
-		// Check if preparation succeeded
 		if ($stmt === false) {
-			die("Statement preparation failed: " . print_r(sqlsrv_errors(), true));
+			die(json_encode(['success' => false, 'message' => sqlsrv_errors()]));
 		}
 	
-		// Execute the stored procedure
-		if (!sqlsrv_execute($stmt)) {
-			die("Execution failed: " . print_r(sqlsrv_errors(), true));
-		} 
-	
-		// Check the stored procedure output status
-		if ($status == 1) {
-			return json_encode(['success' => true, 'message' => $message]);
+		if (sqlsrv_execute($stmt)) {
+			return json_encode(['success' => ($status == 1), 'message' => $message]);
 		} else {
-			return json_encode(['success' => false, 'message' => $message]);
+			$errors = sqlsrv_errors();
+			$errorMessage = "Database error occurred: ";
+			if ($errors) {
+				foreach ($errors as $error) {
+					$errorMessage .= "SQLSTATE: " . $error['SQLSTATE'] . ", Code: " . $error['code'] . ", Message: " . $error['message'] . "\n";
+				}
+			}
+			error_log($errorMessage);
+			return json_encode(['success' => false, 'message' => 'Database error occurred.']);
 		}
 	}
 	
+	function update_user() {
+		extract($_POST);
+		$conn = $this->conn;
+	
+		$hashed_password = !empty($password) ? password_hash($password, PASSWORD_DEFAULT) : NULL;
+	
+		$query = "{CALL sp_update_user(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
+	
+		$status = 0;
+		$message = "";
+	
+		$params = array(
+			$id, // UserID
+			$firstname,
+			$middlename,
+			$lastname,
+			$suffix,
+			$employee_no,
+			$username,
+			$hashed_password, // Hashed password or NULL
+			$type,
+			array(&$status, SQLSRV_PARAM_OUT),
+			array(&$message, SQLSRV_PARAM_OUT)
+		);
+	
+		$stmt = sqlsrv_prepare($conn, $query, $params);
+	
+		if ($stmt === false) {
+			die(json_encode(['success' => false, 'message' => sqlsrv_errors()]));
+		}
+	
+		if (sqlsrv_execute($stmt)) {
+			return json_encode(['success' => ($status == 1), 'message' => $message]);
+		} else {
+			$errors = sqlsrv_errors();
+			$errorMessage = "Database error occurred: ";
+			if ($errors) {
+				foreach ($errors as $error) {
+					$errorMessage .= "SQLSTATE: " . $error['SQLSTATE'] . ", Code: " . $error['code'] . ", Message: " . $error['message'] . "\n";
+				}
+			}
+			error_log($errorMessage);
+			return json_encode(['success' => false, 'message' => 'Database error occurred.']);
+		}
+	}
+	
+	
+
 	//! DONE
 	function delete_user() {
 		extract($_POST);
-		$conn = $this->conn; // Database connection
+		$conn = $this->conn;
 	
-		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "{CALL SP_Delete_User(?)}";
-		$params = array($id);
+		// Prepare stored procedure call
+		$query = "{CALL sp_delete_user(?, ?, ?)}";
 	
-		// Prepare the statement using sqlsrv_prepare
+		// Define output parameters
+		$status = 0;
+		$message = "";
+	
+		$params = array(
+			$id, // @UserID
+			array(&$status, SQLSRV_PARAM_OUT),
+			array(&$message, SQLSRV_PARAM_OUT)
+		);
+	
+		// Prepare and execute the statement
 		$stmt = sqlsrv_prepare($conn, $query, $params);
 	
-		// Check if the preparation succeeded
 		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+			die(json_encode(['success' => false, 'message' => sqlsrv_errors()]));
 		}
 	
-		// Execute the stored procedure
 		if (sqlsrv_execute($stmt)) {
-			return 1; // Should return 1 if successful
+			return json_encode(['success' => ($status == 1), 'message' => $message]);
 		} else {
-			// Debugging: Print errors if execution fails
-			echo '<pre>';
-			echo "Execution failed:\n";
-			print_r(sqlsrv_errors());
-			echo '</pre>';
+			return json_encode(['success' => false, 'message' => 'Database error occurred.']);
 		}
-	
-		return 0; // Failure case
 	}
+	
 
 	//! DONE
 	function save_employee() {

@@ -100,22 +100,21 @@ include('./db_connect.php');
   		</div>
 
   		<div id="login-right">
-  			<div class="card col-md-8">
-  				<div class="card-body">
-  						
-  					<form id="login-form" >
-  						<div class="form-group">
-  							<label for="username" class="control-label">Username</label>
-  							<input type="text" id="username" name="username" class="form-control">
-  						</div>
-  						<div class="form-group">
-  							<label for="password" class="control-label">Password</label>
-  							<input type="password" id="password" name="password" class="form-control">
-  						</div>
-  						<center><button type="submit" class="btn-sm btn-block btn-wave col-md-4 btn-primary">Login</button></center>
-  					</form>
-  				</div>
-  			</div>
+		  <div class="card col-md-8">
+				<div class="card-body">
+					<form id="login-form">
+						<div class="form-group">
+							<label for="username">Username</label>
+							<input type="text" id="username" name="username" class="form-control" required>
+						</div>
+						<div class="form-group">
+							<label for="password">Password</label>
+							<input type="password" id="password" name="password" class="form-control" required>
+						</div>
+						<button type="submit" class="btn btn-primary">Login</button>
+					</form>
+				</div>
+			</div>
   		</div>
    
 
@@ -125,69 +124,34 @@ include('./db_connect.php');
 
 
 </body>
+
 <script>
-$(document).ready(function() {
-    $('#login-form').submit(function(e){
-        e.preventDefault();
-        
-        console.log('Form submitted'); // Debug log
-        
-        // Clear any existing alerts
-        $('.alert').remove();
-        
-        // Disable button and show loading
-        const loginBtn = $(this).find('button[type="submit"]');
-        loginBtn.prop('disabled', true).html('Logging in...');
-        
-        // Debug: Log form data
-        console.log('Form data:', $(this).serialize());
-        
-        $.ajax({
-            url: 'ajax.php?action=login',
-            method: 'POST',
-            data: $(this).serialize(),
-            dataType: 'text',
-            error: function(xhr, status, error) {
-                console.error('Login error:', error);
-                console.log('Status:', status);
-                console.log('Response:', xhr.responseText);
-                
-                loginBtn.prop('disabled', false).html('Login');
-                $('#login-form').prepend('<div class="alert alert-danger">An error occurred during login.</div>');
-            },
-            success: function(resp) {
-                console.log('Raw server response:', resp); // Log raw response
-                
-                // Remove any whitespace and HTML
-                const cleanResp = resp.replace(/<\/?[^>]+(>|$)/g, "").trim();
-                console.log('Cleaned response:', cleanResp);
-                
-				// Split the string by '/'
-				let parts = cleanResp.split('!');
-
-				// Get the last part
-				let lastPart = parts[parts.length - 1];
-
-                // Try to parse response as number
-                const response = parseInt(lastPart);
-                console.log('Parsed response:', response);
-                
-                if(response === 1) {
-                    console.log('Login successful, attempting redirect...');
-                    // Try both methods of redirect
-                    window.location.href = 'index.php?page=home';
-                    if(!window.location.href.includes('index.php')) {
-                        window.location.replace('index.php?page=home');
-                    }
-                } else if(response === 2) {
-                    window.location.href = 'voting.php';
-                } else {
-                    $('#login-form').prepend('<div class="alert alert-danger">Username or password is incorrect.</div>');
-                    loginBtn.prop('disabled', false).html('Login');
-                }
+$('#login-form').submit(function(e){
+    e.preventDefault();
+    $.ajax({
+        url:'ajax.php?action=login',
+        data: $(this).serialize(),
+        method: 'POST',
+        dataType: 'json',
+        beforeSend: function(){
+            $('.alert-danger').remove();
+            $('button[type="submit"]').prop('disabled', true);
+        },
+        success:function(resp){
+            if(resp.status == 1){
+                window.location.href = 'index.php?page=home';
+            } else {
+                $('#login-form').prepend('<div class="alert alert-danger">'+resp.message+'</div>');
             }
-        });
+        },
+        error:function(xhr, status, error){
+            $('#login-form').prepend('<div class="alert alert-danger">System error occurred</div>');
+            console.error('Login error:', error);
+        },
+        complete: function(){
+            $('button[type="submit"]').prop('disabled', false);
+        }
     });
 });
-</script>	
+</script>
 </html>

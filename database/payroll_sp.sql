@@ -3,17 +3,90 @@ GO
 
 -- sp_save_user [UPDATED!!!]
 
-ALTER PROCEDURE sp_save_user
+CREATE PROCEDURE sp_save_user
+		@FirstName NVARCHAR(100),
+		@MiddleName NVARCHAR(100),
+		@LastName NVARCHAR(100),
+		@Suffix NVARCHAR(10),
+		@EmployeeNo NVARCHAR(50),
+		@Username NVARCHAR(50),
+		@Password NVARCHAR(255),
+		@Type INT,
+		@Status INT OUTPUT,
+		@Message NVARCHAR(255) OUTPUT
+	AS
+	BEGIN
+		SET NOCOUNT ON;
+
+		BEGIN TRY
+			DECLARE @EmployeeId INT;
+
+			-- Check if employee exists
+			SELECT @EmployeeId = id 
+			FROM employee 
+			WHERE firstname = @FirstName
+				AND middlename = @MiddleName
+				AND lastname = @LastName
+				AND suffix = @Suffix
+				AND employee_no = @EmployeeNo
+				AND isDeleted = 0;
+
+			IF @EmployeeId IS NULL
+			BEGIN
+				SET @Status = 0;
+				SET @Message = 'Employee not found';
+				RETURN;
+			END
+
+			-- Check if employee already has a user account
+			IF EXISTS (SELECT 1 FROM users WHERE employee_id = @EmployeeId AND isDeleted = 0)
+			BEGIN
+				SET @Status = 0;
+				SET @Message = 'Employee already has a user account';
+				RETURN;
+			END
+
+			-- Check if username exists
+			IF EXISTS (SELECT 1 FROM users WHERE username = @Username AND isDeleted = 0)
+			BEGIN
+				SET @Status = 0;
+				SET @Message = 'Username already exists';
+				RETURN;
+			END
+
+			-- Insert user record
+			INSERT INTO users (employee_id, username, password, type, isDeleted)
+			VALUES (@EmployeeId, @Username, @Password, @Type, 0);
+
+			-- Get the newly inserted user ID
+			DECLARE @NewUserId INT = SCOPE_IDENTITY();
+
+			-- Output success message
+			SET @Status = 1;
+			SET @Message = 'User successfully created with ID: ' + CAST(@NewUserId AS NVARCHAR(10));
+		END TRY
+		BEGIN CATCH
+			SET @Status = 0;
+			SET @Message = ERROR_MESSAGE();
+		END CATCH
+	END
+	
+GO
+
+-- sp_update_user
+ALTER PROCEDURE sp_update_user (
+    @UserID INT,
     @FirstName NVARCHAR(100),
     @MiddleName NVARCHAR(100),
     @LastName NVARCHAR(100),
     @Suffix NVARCHAR(10),
     @EmployeeNo NVARCHAR(50),
     @Username NVARCHAR(50),
-    @Password NVARCHAR(255),
+    @Password NVARCHAR(255), -- Can be NULL if not changing
     @Type INT,
     @Status INT OUTPUT,
     @Message NVARCHAR(255) OUTPUT
+)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -21,9 +94,17 @@ BEGIN
     BEGIN TRY
         DECLARE @EmployeeId INT;
 
-        -- Check if employee exists
-        SELECT @EmployeeId = id 
-        FROM employee 
+        -- Validate the user exists
+        IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 0)
+        BEGIN
+            SET @Status = 0;
+            SET @Message = 'User not found';
+            RETURN;
+        END
+
+        -- Validate associated employee (using provided name parts and employee_no)
+        SELECT @EmployeeId = id
+        FROM employee
         WHERE firstname = @FirstName
             AND middlename = @MiddleName
             AND lastname = @LastName
@@ -38,32 +119,31 @@ BEGIN
             RETURN;
         END
 
-        -- Check if employee already has a user account
-        IF EXISTS (SELECT 1 FROM users WHERE employee_id = @EmployeeId AND isDeleted = 0)
-        BEGIN
-            SET @Status = 0;
-            SET @Message = 'Employee already has a user account';
-            RETURN;
-        END
-
-        -- Check if username exists
-        IF EXISTS (SELECT 1 FROM users WHERE username = @Username AND isDeleted = 0)
+        -- Ensure the username is unique (excluding current user)
+        IF EXISTS (SELECT 1 FROM users WHERE username = @Username AND id <> @UserID AND isDeleted = 0)
         BEGIN
             SET @Status = 0;
             SET @Message = 'Username already exists';
             RETURN;
         END
 
-        -- Insert user record
-        INSERT INTO users (employee_id, username, password, type, isDeleted)
-        VALUES (@EmployeeId, @Username, @Password, @Type, 0);
+        -- Update user record (conditionally update password)
+        UPDATE users
+        SET employee_id = @EmployeeId,
+            username = @Username,
+            type = @Type
+        WHERE id = @UserID;
 
-        -- Get the newly inserted user ID
-        DECLARE @NewUserId INT = SCOPE_IDENTITY();
+        -- Conditionally update the password *after* the main update
+        IF @Password IS NOT NULL
+        BEGIN
+            UPDATE users
+            SET password = @Password  -- Now this is correct
+            WHERE id = @UserID;
+        END
 
-        -- Output success message
         SET @Status = 1;
-        SET @Message = 'User successfully created with ID: ' + CAST(@NewUserId AS NVARCHAR(10));
+        SET @Message = 'User successfully updated';
     END TRY
     BEGIN CATCH
         SET @Status = 0;
@@ -163,7 +243,7 @@ GO
 
 -- sp_delete position
 
-CREATE PROCEDURE [dbo].[sp_delete_position]
+ALTER PROCEDURE [dbo].[sp_delete_position]
     @p_id INT
 AS
 BEGIN
@@ -177,17 +257,39 @@ END;
 GO
 
 -- sp_delete_user
-
-CREATE PROCEDURE [dbo].[sp_delete_user] 
-    @p_id INT
+ALTER PROCEDURE sp_delete_user
+    @UserID INT,
+    @Status INT OUTPUT,
+    @Message NVARCHAR(255) OUTPUT
 AS
 BEGIN
-    DELETE FROM users WHERE id = @p_id;
-    
-    -- Return success
-    SELECT 1 AS status;
-END;
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        -- Check if user exists and is not already deleted
+        IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 0)
+        BEGIN
+            SET @Status = 0;
+            SET @Message = 'User not found or already deleted';
+            RETURN;
+        END
+
+        -- Soft delete the user
+        UPDATE users
+        SET isDeleted = 1
+        WHERE id = @UserID;
+
+        SET @Status = 1;
+        SET @Message = 'User successfully deleted';
+    END TRY
+    BEGIN CATCH
+        SET @Status = 0;
+        SET @Message = ERROR_MESSAGE();
+    END CATCH
+END
 GO
+
+
 
 -- sp_save_allowances
 
@@ -583,3 +685,42 @@ BEGIN
     ORDER BY d.name, p.name ASC;  -- Order by department then position
 END;
 GO
+
+-- sp_login
+
+CREATE OR ALTER PROCEDURE sp_login
+    @Username NVARCHAR(50),
+    @Password NVARCHAR(255),
+    @Status INT OUTPUT,
+    @Message NVARCHAR(255) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @UserID INT;
+    DECLARE @EmployeeName NVARCHAR(100);
+    
+    SELECT @UserID = u.id,
+           @EmployeeName = CONCAT(e.firstname, ' ', e.lastname)
+    FROM users u
+    LEFT JOIN employee e ON u.employee_id = e.id
+    WHERE u.username = @Username 
+    AND u.isDeleted = 0;
+
+    IF @UserID IS NULL
+    BEGIN
+        SET @Status = 0;
+        SET @Message = 'Invalid username or password';
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND password = @Password)
+    BEGIN
+        SET @Status = 1;
+        SET @Message = 'Login successful';
+        RETURN;
+    END
+
+    SET @Status = 0;
+    SET @Message = 'Invalid username or password';
+END

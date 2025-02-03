@@ -1,38 +1,17 @@
 <?php
 include('db_connect.php');
-if (isset($_GET['id'])) {
-    // Use parameterized query to prevent SQL injection
-    $query = "SELECT * FROM users WHERE id = ?"; // Your SQL query
+include('admin_class.php'); // Make sure this path is correct
 
-    // Prepare the query with sqlsrv_prepare
-    $params = array($_GET['id']); // The parameter for the query (id)
+$admin = new Action(); // Use the correct class name: Action
+$action = $_GET['action'] ?? '';
 
-    $stmt = sqlsrv_prepare($conn, $query, $params);
-
-    if ($stmt === false) {
-        die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
-    }
-
-    // Execute the query
-    if (sqlsrv_execute($stmt)) {
-        // Fetch the result as an associative array
-        $meta = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-        
-        if (!$meta) { // Check if user exists
-            echo "User not found.";
-            exit;
-        }
-
-        // Do something with $meta if user exists
-        // Example: print_r($meta);
-    } else {
-        echo "Error executing the query.";
-        exit;
-    }
-
-    sqlsrv_free_stmt($stmt); // Free the statement
+if ($action == 'save_user') {
+    echo $admin->save_user();
+} elseif ($action == 'update_user') {
+    echo $admin->update_user();
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid action.']);
 }
-
 ?>
 
 <div class="container-fluid">
@@ -82,28 +61,30 @@ if (isset($_GET['id'])) {
 <script>
 $('#manage-user').submit(function (e) {
     e.preventDefault();
-    start_load();
-    $.ajax({
-        url: 'ajax.php?action=save_user',
-        method: 'POST',
-        data: $(this).serialize(),
-        dataType: 'json', // Expect JSON response
-        error: function(err) {
-            console.log("AJAX Error:", err);
-        },
-        success: function(resp) {
-            console.log("Server Response:", resp);
 
+    let action = $('input[name=id]').val() ? 'update_user' : 'save_user';
+    let formData = $(this).serialize();
+
+    $.ajax({
+        url: 'ajax.php?action=' + action,
+        method: 'POST',
+        data: formData,
+        dataType: 'json',
+        success: function(resp) {
             if (resp.success) {
                 alert_toast(resp.message, 'success');
-                setTimeout(function () {
-                    location.reload();
-                }, 1500);
+                setTimeout(() => location.reload(), 1500); // Reload for update
+                if (action == 'save_user') {
+                  $('#manage-user')[0].reset(); // Clear the form after successful insertion
+                }
             } else {
                 alert_toast(resp.message, 'danger');
             }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            console.error("AJAX Error:", textStatus, errorThrown);
+            alert_toast("An error occurred during the request.", 'danger');
         }
     });
 });
-
 </script>

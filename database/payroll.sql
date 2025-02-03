@@ -412,4 +412,6 @@ SELECT
 FROM employee e
 INNER JOIN department d ON e.department_id = d.id
 INNER JOIN position p ON e.position_id = p.id
-WHERE e.isDeleted = 0;
+WHERE e.isDeleted = 0;  -- Filter deleted employees
+
+
