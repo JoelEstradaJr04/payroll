@@ -95,7 +95,7 @@
 			
 			$('.edit_payroll').click(function(){
 				var $id=$(this).attr('data-id');
-				uni_modal("Edit Employee","manage_payroll.php?id="+$id)
+				uni_modal("Edit Payroll","manage_payroll.php?id="+$id)
 				
 			});
 			$('.view_payroll').click(function(){

@@ -398,7 +398,7 @@ WHERE e.isDeleted = 0
 GO
 
 
--- VIEW Employee Details [UPDATED, NEW!]
+-- VIEW Employee [UPDATED, NEW!]
 CREATE VIEW EmployeeDetailsView AS
 SELECT
     e.employee_no,

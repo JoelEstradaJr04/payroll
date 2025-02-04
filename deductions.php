@@ -92,6 +92,7 @@
         max-height: 150px;
     }
 </style>
+
 <script>
 	function _reset(){
 		$('[name="id"]').val('');

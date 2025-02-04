@@ -41,7 +41,7 @@
                             </thead>
                             <tbody>
                                 <?php
-                                $sql = "EXEC SP_Show_Department"; // SQL Server query
+                                $sql = "EXEC sp_show_department"; // SQL Server query
                                 $stmt = sqlsrv_query($conn, $sql);
 
                                 if ($stmt === false) {

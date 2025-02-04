@@ -1,5 +1,11 @@
-USE [payroll2]
+USE [payroll]
 GO
+
+/*
+**
+** SAVE SPs
+**
+*/
 
 -- sp_save_user [UPDATED!!!]
 
@@ -72,6 +78,434 @@ CREATE PROCEDURE sp_save_user
 	END
 	
 GO
+
+-- sp_save_allowances [UPDATED!!!]
+
+CREATE PROCEDURE [dbo].[sp_save_allowances]
+    @p_id INT,
+    @p_allowance NVARCHAR(250),
+    @p_description NVARCHAR(MAX),
+    @p_isDeleted BIT = 0, -- Default to not deleted
+    @status INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @p_id IS NULL OR @p_id = 0
+    BEGIN
+        -- Insert new allowance with the isDeleted flag
+        INSERT INTO allowances (allowance, description, isDeleted) 
+        VALUES (@p_allowance, @p_description, @p_isDeleted);
+        
+        -- Get the newly inserted ID
+        SET @p_id = SCOPE_IDENTITY();
+    END
+    ELSE
+    BEGIN
+        -- Update existing allowance
+        UPDATE allowances 
+        SET allowance = @p_allowance, 
+            description = @p_description,
+            isDeleted = @p_isDeleted
+        WHERE id = @p_id;
+    END
+
+    -- Ensure status output is set
+    IF @@ROWCOUNT > 0
+        SET @status = 1;
+    ELSE
+        SET @status = 0;
+END;
+GO
+
+-- sp_save_deduction [UPDATED!!!]
+
+CREATE PROCEDURE [dbo].[sp_save_deduction]
+    @p_id INT,
+    @p_deduction NVARCHAR(250),
+    @p_description NVARCHAR(MAX),
+    @p_isDeleted BIT = 0, -- Default to not deleted
+    @status INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @p_id IS NULL OR @p_id = 0
+    BEGIN
+        -- Insert new deduction
+        INSERT INTO deductions (deduction, description, isDeleted) 
+        VALUES (@p_deduction, @p_description, @p_isDeleted);
+    END
+    ELSE
+    BEGIN
+        -- Update existing deduction
+        UPDATE deductions 
+        SET deduction = @p_deduction, 
+            description = @p_description,
+            isDeleted = @p_isDeleted
+        WHERE id = @p_id;
+    END
+
+    SET @status = 1;
+END;
+GO
+
+
+/*
+**
+** DELETE SPs
+**
+*/
+
+
+-- Department
+CREATE PROCEDURE [dbo].[sp_delete_department]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM department WHERE id = @p_id)
+    BEGIN
+        UPDATE department SET isDeleted = 1 WHERE id = @p_id;
+        UPDATE position SET isDeleted = 1 WHERE department_id = @p_id;
+        UPDATE employee SET isDeleted = 1 WHERE department_id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Position
+CREATE PROCEDURE [dbo].[sp_delete_position]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM position WHERE id = @p_id)
+    BEGIN
+        UPDATE position SET isDeleted = 1 WHERE id = @p_id;
+        UPDATE employee SET isDeleted = 1 WHERE position_id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Employee
+CREATE PROCEDURE [dbo].[sp_delete_employee]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM employee WHERE id = @p_id)
+    BEGIN
+        UPDATE employee SET isDeleted = 1 WHERE id = @p_id;
+        UPDATE attendance SET isDeleted = 1 WHERE employee_id = @p_id;
+        UPDATE employee_allowances SET isDeleted = 1 WHERE employee_id = @p_id;
+        UPDATE employee_deductions SET isDeleted = 1 WHERE employee_id = @p_id;
+        UPDATE payroll_items SET isDeleted = 1 WHERE employee_id = @p_id;
+        UPDATE users SET isDeleted = 1 WHERE employee_id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Allowance
+CREATE PROCEDURE [dbo].[sp_delete_allowance]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM allowances WHERE id = @p_id)
+    BEGIN
+        UPDATE allowances SET isDeleted = 1 WHERE id = @p_id;
+        UPDATE employee_allowances SET isDeleted = 1 WHERE allowance_id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Deduction
+CREATE PROCEDURE [dbo].[sp_delete_deduction]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM deductions WHERE id = @p_id)
+    BEGIN
+        UPDATE deductions SET isDeleted = 1 WHERE id = @p_id;
+        UPDATE employee_deductions SET isDeleted = 1 WHERE deduction_id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Payroll
+CREATE PROCEDURE [dbo].[sp_delete_payroll]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM payroll WHERE id = @p_id)
+    BEGIN
+        UPDATE payroll SET isDeleted = 1 WHERE id = @p_id;
+        UPDATE payroll_items SET isDeleted = 1 WHERE payroll_id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Payroll Item
+CREATE PROCEDURE [dbo].[sp_delete_payroll_item]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM payroll_items WHERE id = @p_id)
+    BEGIN
+        UPDATE payroll_items SET isDeleted = 1 WHERE id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Employee Allowance
+CREATE PROCEDURE [dbo].[sp_delete_employee_allowance]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM employee_allowances WHERE id = @p_id)
+    BEGIN
+        UPDATE employee_allowances SET isDeleted = 1 WHERE id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Employee Deduction
+CREATE PROCEDURE [dbo].[sp_delete_employee_deduction]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM employee_deductions WHERE id = @p_id)
+    BEGIN
+        UPDATE employee_deductions SET isDeleted = 1 WHERE id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Attendance
+CREATE PROCEDURE [dbo].[sp_delete_attendance]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM attendance WHERE id = @p_id)
+    BEGIN
+        UPDATE attendance SET isDeleted = 1 WHERE id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- Users
+CREATE PROCEDURE [dbo].[sp_delete_user]
+    @p_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM users WHERE id = @p_id)
+    BEGIN
+        UPDATE users SET isDeleted = 1 WHERE id = @p_id;
+        SELECT 1 AS status;
+    END
+    ELSE
+    BEGIN
+        SELECT 0 AS status;
+    END
+END;
+GO
+
+-- sp_delete_employee_attendance
+
+CREATE PROCEDURE [dbo].[sp_delete_employee_attendance]
+    @p_employee_id INT,
+    @p_date DATE
+AS
+BEGIN
+    DELETE FROM attendance WHERE employee_id = @p_employee_id AND CAST(datetime_log AS DATE) = @p_date;
+END;
+GO
+
+-- sp_delete_employee_attendance_single
+
+CREATE PROCEDURE [dbo].[sp_delete_employee_attendance_single]
+    @p_id INT
+AS
+BEGIN
+    DELETE FROM attendance WHERE id = @p_id;
+END;
+GO
+
+/*
+**
+** READ/SHOW SPs
+**
+*/
+
+-- sp_show_deduction [UPDATED!!!]
+
+CREATE PROCEDURE [dbo].[sp_show_deduction]
+AS
+BEGIN
+	SELECT * 
+		FROM deductions 
+		WHERE isDeleted = 0
+		ORDER BY id
+END
+GO
+
+-- sp_show_department [UPDATED!!!]
+
+CREATE PROCEDURE sp_show_department
+AS
+BEGIN
+    SELECT id, name
+    FROM department
+    WHERE isDeleted = 0
+    ORDER BY name ASC;
+END;
+GO
+
+-- sp_show_allowances [UPDATED!!!]
+CREATE PROCEDURE sp_show_allowances
+AS
+BEGIN
+    SELECT * 
+    FROM allowances 
+    WHERE isDeleted = 0 
+    ORDER BY id ASC;
+END;
+GO
+
+-- sp_show_positions [UPDATED!!!]
+
+CREATE PROCEDURE sp_show_positions
+AS
+BEGIN
+    SELECT
+        d.id AS department_id,
+        d.name AS department_name,
+        p.id AS position_id,
+        p.name AS position_name
+    FROM department d
+    INNER JOIN position p ON d.id = p.department_id
+    WHERE d.isDeleted = 0
+      AND p.isDeleted = 0
+    ORDER BY d.name, p.name ASC;  -- Order by department then position
+END;
+GO
+
+
+/*
+**
+** MISC SPs
+**
+*/
+
+
+-- sp_login [UPDATED!!!]
+
+CREATE PROCEDURE sp_login
+    @Username NVARCHAR(50),
+    @Password NVARCHAR(255),
+    @Status INT OUTPUT,
+    @Message NVARCHAR(255) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @UserID INT;
+    DECLARE @EmployeeName NVARCHAR(100);
+    
+    SELECT @UserID = u.id,
+           @EmployeeName = CONCAT(e.firstname, ' ', e.lastname)
+    FROM users u
+    LEFT JOIN employee e ON u.employee_id = e.id
+    WHERE u.username = @Username 
+    AND u.isDeleted = 0;
+
+    IF @UserID IS NULL
+    BEGIN
+        SET @Status = 0;
+        SET @Message = 'Invalid username or password';
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND password = @Password)
+    BEGIN
+        SET @Status = 1;
+        SET @Message = 'Login successful';
+        RETURN;
+    END
+
+    SET @Status = 0;
+    SET @Message = 'Invalid username or password';
+END
+GO
+
 
 -- sp_update_user
 CREATE PROCEDURE sp_update_user (
@@ -152,183 +586,15 @@ BEGIN
 END
 GO
 
--- sp_delete_deduction
 
-CREATE PROCEDURE [dbo].[sp_delete_deduction]
-    @p_id INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE deductions SET isDeleted = 1 WHERE id = @p_id;
-    SELECT 1 AS status;
-END;
-GO
-
--- sp_delete_department
-
-CREATE PROCEDURE [dbo].[sp_delete_department] 
-    @p_id INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE department SET isDeleted = 1 WHERE id = @p_id;
-    SELECT 1 AS status;
-END;
-GO
-
--- sp_delete_employee
-
-CREATE PROCEDURE [dbo].[sp_delete_employee] 
-    @p_id INT  -- Employee ID to delete
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    UPDATE [employee]
-    SET [isDeleted] = 1
-    WHERE [id] = @p_id;
-END;
-GO
-
--- sp_delete_employee_allowance
-
-CREATE PROCEDURE [dbo].[sp_delete_employee_allowance]
-    @p_id INT
-AS
-BEGIN
-    DELETE FROM employee_allowances WHERE id = @p_id;
-END;
-GO
-
--- sp_delete_employee_attendance
-
-CREATE PROCEDURE [dbo].[sp_delete_employee_attendance]
-    @p_employee_id INT,
-    @p_date DATE
-AS
-BEGIN
-    DELETE FROM attendance WHERE employee_id = @p_employee_id AND CAST(datetime_log AS DATE) = @p_date;
-END;
-GO
-
--- sp_delete_employee_attendance_single
-
-CREATE PROCEDURE [dbo].[sp_delete_employee_attendance_single]
-    @p_id INT
-AS
-BEGIN
-    DELETE FROM attendance WHERE id = @p_id;
-END;
-GO
-
--- sp_delete_employee_deduction
-
-CREATE PROCEDURE [dbo].[sp_delete_employee_deduction]
-    @p_id INT
-AS
-BEGIN
-    DELETE FROM employee_deductions WHERE id = @p_id;
-END;
-GO
-
--- sp_delete_payroll
-
-CREATE PROCEDURE [dbo].[sp_delete_payroll]
-    @p_id INT
-AS
-BEGIN
-    DELETE FROM payroll WHERE id = @p_id;
-END;
-GO
-
--- sp_delete position
-
-CREATE PROCEDURE [dbo].[sp_delete_position]
-    @p_id INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- Instead of deleting, update isDeleted to 1 (soft delete)
-    UPDATE position 
-    SET isDeleted = 1
-    WHERE id = @p_id;
-END;
-GO
-
--- sp_delete_user
-CREATE PROCEDURE sp_delete_user
-    @UserID INT,
-    @Status INT OUTPUT,
-    @Message NVARCHAR(255) OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    BEGIN TRY
-        -- Check if user exists and is not already deleted
-        IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 0)
-        BEGIN
-            SET @Status = 0;
-            SET @Message = 'User not found or already deleted';
-            RETURN;
-        END
-
-        -- Soft delete the user
-        UPDATE users
-        SET isDeleted = 1
-        WHERE id = @UserID;
-
-        SET @Status = 1;
-        SET @Message = 'User successfully deleted';
-    END TRY
-    BEGIN CATCH
-        SET @Status = 0;
-        SET @Message = ERROR_MESSAGE();
-    END CATCH
-END
-GO
-
-
-
--- sp_save_allowances
-
-CREATE PROCEDURE [dbo].[sp_save_allowances]
-    @p_id INT,
-    @p_allowance NVARCHAR(250),
-    @p_description NVARCHAR(MAX),
-    @p_isDeleted BIT = 0, -- Default to not deleted
-    @status INT OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF @p_id IS NULL OR @p_id = 0
-    BEGIN
-        -- Insert new allowance with the isDeleted flag
-        INSERT INTO allowances (allowance, description, isDeleted) 
-        VALUES (@p_allowance, @p_description, @p_isDeleted);
-        
-        -- Get the newly inserted ID
-        SET @p_id = SCOPE_IDENTITY();
-    END
-    ELSE
-    BEGIN
-        -- Update existing allowance
-        UPDATE allowances 
-        SET allowance = @p_allowance, 
-            description = @p_description,
-            isDeleted = @p_isDeleted
-        WHERE id = @p_id;
-    END
-
-    -- Ensure status output is set
-    IF @@ROWCOUNT > 0
-        SET @status = 1;
-    ELSE
-        SET @status = 0;
-END;
-GO
+/*
+	TO DO
+	TO DO
+	TO DO
+	TO DO
+	TO DO
+	TO DO
+*/
 
 -- sp_save_department
 
@@ -463,38 +729,6 @@ BEGIN
 END;
 GO
 
--- sp_save_employee_deduction
-
-CREATE PROCEDURE [dbo].[sp_save_employee_deduction]
-    @p_id INT,
-    @p_deduction NVARCHAR(250),
-    @p_description NVARCHAR(MAX),
-    @p_isDeleted BIT = 0, -- Default to not deleted
-    @status INT OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF @p_id IS NULL OR @p_id = 0
-    BEGIN
-        -- Insert new deduction
-        INSERT INTO deductions (deduction, description, isDeleted) 
-        VALUES (@p_deduction, @p_description, @p_isDeleted);
-    END
-    ELSE
-    BEGIN
-        -- Update existing deduction
-        UPDATE deductions 
-        SET deduction = @p_deduction, 
-            description = @p_description,
-            isDeleted = @p_isDeleted
-        WHERE id = @p_id;
-    END
-
-    SET @status = 1;
-END;
-GO
-
 -- sp_save_payroll
 
 CREATE PROCEDURE [dbo].[sp_save_payroll]
@@ -568,159 +802,3 @@ BEGIN
 END;
 GO
 
--- sp_save_user
-
-CREATE PROCEDURE [dbo].[sp_save_user]
-    @p_id INT,
-    @emp_no INT,
-    @p_name VARCHAR(255),
-    @p_username VARCHAR(255),
-    @p_password VARCHAR(255),
-    @p_type BIT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- Check if id is NULL or 0 (Insert case)
-    IF @p_id IS NULL OR @p_id = 0
-    BEGIN
-        INSERT INTO users (employee_id, name, username, password, type) 
-        VALUES (@emp_no, @p_name, @p_username, @p_password, @p_type);
-    END
-    ELSE
-    BEGIN
-        -- Update case
-        UPDATE users 
-        SET name = @p_name, 
-            username = @p_username, 
-            password = @p_password, 
-            type = @p_type
-        WHERE id = @p_id;
-    END
-
-    -- Return success
-    SELECT 1 AS status;
-END
-GO
-
--- sp_show_deduction [UPDATED]
-
-CREATE PROCEDURE [dbo].[sp_show_deduction]
-AS
-BEGIN
-	SELECT * 
-		FROM deductions 
-		WHERE isDeleted = 0
-		ORDER BY id
-END
-GO
-
--- sp_show_department [UPDATED]
-
-CREATE PROCEDURE sp_show_department
-AS
-BEGIN
-    SELECT id, name
-    FROM department
-    WHERE isDeleted = 0
-    ORDER BY name ASC;
-END;
-GO
-
--- sp_show_employee [UNNECESSARY]
-
-CREATE PROCEDURE [dbo].[sp_show_employee] 
-AS 
-BEGIN
-	SELECT * 
-		FROM employee
-		WHERE isDeleted=0
-END
-GO
-
--- sp_show_user [UNNECESSARY]
-
-CREATE PROCEDURE [dbo].[sp_show_user]
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT u.id, 
-           u.employee_id,
-           u.name, 
-           u.username,
-           u.type AS isAdmin
-    FROM users u
-    LEFT JOIN employee e ON u.employee_id = e.id
-    WHERE u.isDeleted = 0
-    ORDER BY u.name ASC;
-END;
-GO
-
--- sp_show_allowances [UPDATED, NEW!]
-CREATE PROCEDURE sp_show_allowances
-AS
-BEGIN
-    SELECT * 
-    FROM allowances 
-    WHERE isDeleted = 0 
-    ORDER BY id ASC;
-END;
-GO
-
--- sp_show_positions [UPDATED, NEW!]
-
-CREATE PROCEDURE sp_show_positions
-AS
-BEGIN
-    SELECT
-        d.id AS department_id,
-        d.name AS department_name,
-        p.id AS position_id,
-        p.name AS position_name
-    FROM department d
-    INNER JOIN position p ON d.id = p.department_id
-    WHERE d.isDeleted = 0
-      AND p.isDeleted = 0
-    ORDER BY d.name, p.name ASC;  -- Order by department then position
-END;
-GO
-
--- sp_login
-
-CREATE OR ALTER PROCEDURE sp_login
-    @Username NVARCHAR(50),
-    @Password NVARCHAR(255),
-    @Status INT OUTPUT,
-    @Message NVARCHAR(255) OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    DECLARE @UserID INT;
-    DECLARE @EmployeeName NVARCHAR(100);
-    
-    SELECT @UserID = u.id,
-           @EmployeeName = CONCAT(e.firstname, ' ', e.lastname)
-    FROM users u
-    LEFT JOIN employee e ON u.employee_id = e.id
-    WHERE u.username = @Username 
-    AND u.isDeleted = 0;
-
-    IF @UserID IS NULL
-    BEGIN
-        SET @Status = 0;
-        SET @Message = 'Invalid username or password';
-        RETURN;
-    END
-
-    IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND password = @Password)
-    BEGIN
-        SET @Status = 1;
-        SET @Message = 'Login successful';
-        RETURN;
-    END
-
-    SET @Status = 0;
-    SET @Message = 'Invalid username or password';
-END
