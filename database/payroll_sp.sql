@@ -1,4 +1,4 @@
-USE [payroll]
+USE [payroll2]
 GO
 
 -- sp_save_user [UPDATED!!!]
@@ -74,7 +74,7 @@ CREATE PROCEDURE sp_save_user
 GO
 
 -- sp_update_user
-ALTER PROCEDURE sp_update_user (
+CREATE PROCEDURE sp_update_user (
     @UserID INT,
     @FirstName NVARCHAR(100),
     @MiddleName NVARCHAR(100),
@@ -243,7 +243,7 @@ GO
 
 -- sp_delete position
 
-ALTER PROCEDURE [dbo].[sp_delete_position]
+CREATE PROCEDURE [dbo].[sp_delete_position]
     @p_id INT
 AS
 BEGIN
@@ -257,7 +257,7 @@ END;
 GO
 
 -- sp_delete_user
-ALTER PROCEDURE sp_delete_user
+CREATE PROCEDURE sp_delete_user
     @UserID INT,
     @Status INT OUTPUT,
     @Message NVARCHAR(255) OUTPUT

@@ -10,7 +10,7 @@ if ($action == 'save_user') {
 } elseif ($action == 'update_user') {
     echo $admin->update_user();
 } else {
-    echo json_encode(['success' => false, 'message' => 'Invalid action.']);
+    //echo json_encode(['success' => false, 'message' => 'Invalid action.']);
 }
 ?>
 
