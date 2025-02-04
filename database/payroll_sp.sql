@@ -7,9 +7,10 @@ GO
 **
 */
 
+
 -- sp_save_user [UPDATED!!!]
 
-CREATE PROCEDURE sp_save_user
+CREATE PROCEDURE [dbo].[sp_save_user]
 		@FirstName NVARCHAR(100),
 		@MiddleName NVARCHAR(100),
 		@LastName NVARCHAR(100),
@@ -69,7 +70,7 @@ CREATE PROCEDURE sp_save_user
 
 			-- Output success message
 			SET @Status = 1;
-			SET @Message = 'User successfully created with ID: ' + CAST(@NewUserId AS NVARCHAR(10));
+			SET @Message = 'User successfully created!';
 		END TRY
 		BEGIN CATCH
 			SET @Status = 0;
@@ -150,6 +151,204 @@ BEGIN
 END;
 GO
 
+-- sp_save_employee [UPDATED!!!]
+
+CREATE PROCEDURE [dbo].[sp_save_employee]
+    @p_id INT OUTPUT,
+    @p_employee_no NVARCHAR(50) = NULL,
+    @p_firstname NVARCHAR(50),
+    @p_middlename NVARCHAR(20),
+    @p_lastname NVARCHAR(50),
+    @p_suffix NVARCHAR(10) = NULL,
+    @p_department_id INT,
+    @p_position_id INT,
+    @p_salary FLOAT,
+    @status INT OUTPUT,
+    @message NVARCHAR(200) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        -- Validate department and position
+        IF NOT EXISTS (SELECT 1 FROM department WHERE id = @p_department_id)
+        BEGIN
+            SET @status = -2;
+            SET @message = 'Invalid department';
+            RETURN;
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM position WHERE id = @p_position_id)
+        BEGIN
+            SET @status = -2;
+            SET @message = 'Invalid position';
+            RETURN;
+        END
+
+        -- Handle NULL values
+        SET @p_suffix = ISNULL(@p_suffix, 'N/A');
+        SET @p_middlename = ISNULL(@p_middlename, 'N/A');
+
+        -- New Employee
+        IF @p_id IS NULL OR @p_id = 0
+        BEGIN
+            -- Generate employee number if not provided
+            IF @p_employee_no IS NULL
+            BEGIN
+                SELECT @p_employee_no = 'EMP' + RIGHT('000' + CAST(ISNULL(MAX(id), 0) + 1 AS NVARCHAR(10)), 4) 
+                FROM employee;
+            END
+
+            -- Check duplicate employee number
+            IF EXISTS (SELECT 1 FROM employee WHERE employee_no = @p_employee_no AND isDeleted = 0)
+            BEGIN
+                SET @status = -4;
+                SET @message = 'Employee number already exists';
+                RETURN;
+            END
+
+            -- Insert new employee
+            INSERT INTO employee (
+                employee_no, firstname, middlename, lastname, 
+                suffix, department_id, position_id, salary, isDeleted
+            )
+            VALUES (
+                @p_employee_no, @p_firstname, @p_middlename, @p_lastname,
+                @p_suffix, @p_department_id, @p_position_id, @p_salary, 0
+            );
+
+            SET @p_id = SCOPE_IDENTITY();
+            SET @status = 1;
+            SET @message = 'New employee successfully added';
+        END
+        ELSE -- Update Employee
+        BEGIN
+            IF EXISTS (SELECT 1 FROM employee WHERE id = @p_id AND isDeleted = 0)
+            BEGIN
+                UPDATE employee
+                SET firstname = @p_firstname,
+                    middlename = @p_middlename,
+                    lastname = @p_lastname,
+                    suffix = @p_suffix,
+                    department_id = @p_department_id,
+                    position_id = @p_position_id,
+                    salary = @p_salary
+                WHERE id = @p_id;
+                
+                SET @status = 2;
+                SET @message = 'Employee successfully updated';
+            END
+            ELSE
+            BEGIN
+                SET @status = -1;
+                SET @message = 'Employee not found or already deleted';
+            END
+        END
+    END TRY
+    BEGIN CATCH
+        SET @status = -99;
+        SET @message = ERROR_MESSAGE();
+    END CATCH
+END;
+GO
+
+-- sp_save_department [UPDATED!!!]
+
+CREATE PROCEDURE [dbo].[sp_save_department] 
+    @p_id INT,
+    @p_name NVARCHAR(255),
+    @p_status INT OUTPUT
+AS
+BEGIN
+    -- If id is NULL or 0, insert a new department
+    IF @p_id IS NULL OR @p_id = 0
+    BEGIN
+        INSERT INTO department (name) VALUES (@p_name);
+    END
+    ELSE
+    BEGIN
+        -- Update existing department
+        UPDATE department 
+        SET name = @p_name 
+        WHERE id = @p_id;
+    END
+
+    -- Set return status
+    SET @p_status = 1;
+END;
+GO
+
+-- sp_save_position [UPDATED!!!]
+
+CREATE PROCEDURE [dbo].[sp_save_position]
+    @p_id INT OUTPUT,
+    @p_name NVARCHAR(250),
+    @p_department_id INT,
+    @p_isDeleted BIT,
+    @status INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @p_id IS NULL OR @p_id = 0
+    BEGIN
+        INSERT INTO position (name, department_id, isDeleted) 
+        VALUES (@p_name, @p_department_id, @p_isDeleted);
+
+        SET @p_id = SCOPE_IDENTITY(); -- Get the new ID
+    END
+    ELSE
+    BEGIN
+        UPDATE position 
+        SET name = @p_name, 
+            department_id = @p_department_id,
+            isDeleted = @p_isDeleted
+        WHERE id = @p_id;
+    END
+
+    SET @status = 1;
+END;
+GO
+
+-- sp_save_payroll [UPDATED!!!]
+
+CREATE PROCEDURE [dbo].[sp_save_payroll]
+    @id INT OUTPUT,  -- Make @id an OUTPUT parameter
+    @date_from DATE,
+    @date_to DATE,
+    @type INT,
+    @ref_no NVARCHAR(50) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @id IS NULL OR @id = 0
+    BEGIN
+        -- Generate a reference number (You can customize this)
+        DECLARE @new_ref_no NVARCHAR(50);
+        SET @new_ref_no = 'PAY-' + FORMAT(GETDATE(), 'yyyyMMddHHmmss');
+
+        -- Insert new payroll record
+        INSERT INTO payroll (date_from, date_to, type, ref_no)
+        VALUES (@date_from, @date_to, @type, @new_ref_no);
+
+        -- Get the newly inserted payroll ID and Reference Number
+        SET @id = SCOPE_IDENTITY();
+        SET @ref_no = @new_ref_no;
+    END
+    ELSE
+    BEGIN
+        -- Update existing payroll
+        UPDATE payroll
+        SET date_from = @date_from,
+            date_to = @date_to,
+            type = @type
+        WHERE id = @id;
+
+        -- Get the reference number
+        SELECT @ref_no = ref_no FROM payroll WHERE id = @id;
+    END
+END;
+GO
 
 /*
 **
@@ -158,7 +357,7 @@ GO
 */
 
 
--- Department
+-- sp_delete_department [UPDATED!!!]
 CREATE PROCEDURE [dbo].[sp_delete_department]
     @p_id INT
 AS
@@ -179,7 +378,7 @@ BEGIN
 END;
 GO
 
--- Position
+-- sp_delete_position [UPDATED!!!]
 CREATE PROCEDURE [dbo].[sp_delete_position]
     @p_id INT
 AS
@@ -199,31 +398,50 @@ BEGIN
 END;
 GO
 
--- Employee
+-- sp_delete_employee [UPDATED!!!]
 CREATE PROCEDURE [dbo].[sp_delete_employee]
-    @p_id INT
+    @p_id INT,
+    @status INT OUTPUT,
+    @message NVARCHAR(200) OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
+    BEGIN TRY
+        -- Check if employee exists and is not already deleted
+        IF EXISTS (SELECT 1 FROM employee WHERE id = @p_id AND isDeleted = 0)
+        BEGIN
+            BEGIN TRANSACTION;
+                -- Soft delete associated user account if exists
+                IF EXISTS (SELECT 1 FROM users WHERE employee_id = @p_id AND isDeleted = 0)
+                BEGIN
+                    UPDATE users SET isDeleted = 1 WHERE employee_id = @p_id;
+                END
 
-    IF EXISTS (SELECT 1 FROM employee WHERE id = @p_id)
-    BEGIN
-        UPDATE employee SET isDeleted = 1 WHERE id = @p_id;
-        UPDATE attendance SET isDeleted = 1 WHERE employee_id = @p_id;
-        UPDATE employee_allowances SET isDeleted = 1 WHERE employee_id = @p_id;
-        UPDATE employee_deductions SET isDeleted = 1 WHERE employee_id = @p_id;
-        UPDATE payroll_items SET isDeleted = 1 WHERE employee_id = @p_id;
-        UPDATE users SET isDeleted = 1 WHERE employee_id = @p_id;
-        SELECT 1 AS status;
-    END
-    ELSE
-    BEGIN
-        SELECT 0 AS status;
-    END
+                -- Soft delete the employee
+                UPDATE employee SET isDeleted = 1 WHERE id = @p_id;
+
+            COMMIT TRANSACTION;
+            
+            SET @status = 3; -- Delete successful
+            SET @message = 'Employee successfully deleted';
+        END
+        ELSE
+        BEGIN
+            SET @status = -1;
+            SET @message = 'Employee not found or already deleted';
+        END
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        
+        SET @status = -99;
+        SET @message = ERROR_MESSAGE();
+    END CATCH
 END;
 GO
 
--- Allowance
+-- sp_delete_allowance [UPDATED!!!] 
 CREATE PROCEDURE [dbo].[sp_delete_allowance]
     @p_id INT
 AS
@@ -243,7 +461,7 @@ BEGIN
 END;
 GO
 
--- Deduction
+-- sp_delete_deduction [UPDATED!!!]
 CREATE PROCEDURE [dbo].[sp_delete_deduction]
     @p_id INT
 AS
@@ -263,7 +481,7 @@ BEGIN
 END;
 GO
 
--- Payroll
+-- sp_delete_payroll [UPDATED!!!]
 CREATE PROCEDURE [dbo].[sp_delete_payroll]
     @p_id INT
 AS
@@ -283,7 +501,7 @@ BEGIN
 END;
 GO
 
--- Payroll Item
+-- sp_delete_payroll_item *** NOT YET TESTED
 CREATE PROCEDURE [dbo].[sp_delete_payroll_item]
     @p_id INT
 AS
@@ -302,7 +520,7 @@ BEGIN
 END;
 GO
 
--- Employee Allowance
+-- sp_delete_employee_allowance *** NOT YET TESTED
 CREATE PROCEDURE [dbo].[sp_delete_employee_allowance]
     @p_id INT
 AS
@@ -321,7 +539,7 @@ BEGIN
 END;
 GO
 
--- Employee Deduction
+-- sp_delete_employee_deduction *** NOT YET TESTED
 CREATE PROCEDURE [dbo].[sp_delete_employee_deduction]
     @p_id INT
 AS
@@ -340,7 +558,50 @@ BEGIN
 END;
 GO
 
--- Attendance
+-- sp_delete_user ** NOT WORKING
+CREATE PROCEDURE [dbo].[sp_delete_user]
+	@UserID INT,
+	@Status INT OUTPUT,
+	@Message NVARCHAR(255) OUTPUT
+AS
+BEGIN
+	SET NOCOUNT ON;
+	BEGIN TRY
+		-- Check if user exists and not already deleted
+		IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID)
+		BEGIN
+			SET @Status = 0
+			SET @Message = 'User not found'
+			RETURN
+		END
+
+		IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 1)
+		BEGIN
+			SET @Status = 0 
+			SET @Message = 'User already deleted'
+			RETURN
+		END
+
+		-- Get employee_id for this user
+		DECLARE @EmployeeID INT
+		SELECT @EmployeeID = employee_id FROM users WHERE id = @UserID
+
+		-- Soft delete the user record
+		UPDATE users 
+		SET isDeleted = 1
+		WHERE id = @UserID
+
+		SET @Status = 1
+		SET @Message = 'User successfully deleted'
+	END TRY
+	BEGIN CATCH
+		SET @Status = 0
+		SET @Message = ERROR_MESSAGE()
+	END CATCH
+END
+GO
+
+-- sp_delete_employee_attendance_single *** NOT YET TESTED
 CREATE PROCEDURE [dbo].[sp_delete_attendance]
     @p_id INT
 AS
@@ -359,26 +620,7 @@ BEGIN
 END;
 GO
 
--- Users
-CREATE PROCEDURE [dbo].[sp_delete_user]
-    @p_id INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (SELECT 1 FROM users WHERE id = @p_id)
-    BEGIN
-        UPDATE users SET isDeleted = 1 WHERE id = @p_id;
-        SELECT 1 AS status;
-    END
-    ELSE
-    BEGIN
-        SELECT 0 AS status;
-    END
-END;
-GO
-
--- sp_delete_employee_attendance
+-- sp_delete_employee_attendance *** NOT YET TESTED
 
 CREATE PROCEDURE [dbo].[sp_delete_employee_attendance]
     @p_employee_id INT,
@@ -386,16 +628,6 @@ CREATE PROCEDURE [dbo].[sp_delete_employee_attendance]
 AS
 BEGIN
     DELETE FROM attendance WHERE employee_id = @p_employee_id AND CAST(datetime_log AS DATE) = @p_date;
-END;
-GO
-
--- sp_delete_employee_attendance_single
-
-CREATE PROCEDURE [dbo].[sp_delete_employee_attendance_single]
-    @p_id INT
-AS
-BEGIN
-    DELETE FROM attendance WHERE id = @p_id;
 END;
 GO
 
@@ -507,7 +739,7 @@ END
 GO
 
 
--- sp_update_user
+-- sp_update_user ** NOT WORKING
 CREATE PROCEDURE sp_update_user (
     @UserID INT,
     @FirstName NVARCHAR(100),
@@ -596,108 +828,7 @@ GO
 	TO DO
 */
 
--- sp_save_department
-
-CREATE PROCEDURE [dbo].[sp_save_department] 
-    @p_id INT,
-    @p_name NVARCHAR(255),
-    @p_status INT OUTPUT
-AS
-BEGIN
-    -- If id is NULL or 0, insert a new department
-    IF @p_id IS NULL OR @p_id = 0
-    BEGIN
-        INSERT INTO department (name) VALUES (@p_name);
-    END
-    ELSE
-    BEGIN
-        -- Update existing department
-        UPDATE department 
-        SET name = @p_name 
-        WHERE id = @p_id;
-    END
-
-    -- Set return status
-    SET @p_status = 1;
-END;
-GO
-
--- sp_save_employee
-
-CREATE PROCEDURE [dbo].[sp_save_employee]
-    @p_id INT OUTPUT,
-    @p_employee_no NVARCHAR(50) = NULL,
-    @p_firstname NVARCHAR(50),
-    @p_middlename NVARCHAR(20),
-    @p_lastname NVARCHAR(50),
-    @p_suffix NVARCHAR(10) = NULL,
-    @p_department_id INT,
-    @p_position_id INT,
-    @p_salary FLOAT,
-    @status INT OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    -- Ensure Department and Position IDs exist
-    IF NOT EXISTS (SELECT 1 FROM department WHERE id = @p_department_id)
-    BEGIN
-        SET @status = -2; -- Invalid department
-        RETURN;
-    END
-
-    IF NOT EXISTS (SELECT 1 FROM position WHERE id = @p_position_id)
-    BEGIN
-        SET @status = -2; -- Invalid position
-        RETURN;
-    END
-
-    -- If ID is NULL or 0, Insert new employee
-    IF @p_id IS NULL OR @p_id = 0
-    BEGIN
-        -- Generate a unique Employee No if not provided
-        IF @p_employee_no IS NULL
-        BEGIN
-            DECLARE @next_emp_no NVARCHAR(50);
-            SELECT @next_emp_no = 'EMP' + RIGHT('000' + CAST(ISNULL(MAX(id), 0) + 1 AS NVARCHAR(10)), 4) FROM employee;
-            SET @p_employee_no = @next_emp_no;
-        END
-
-        -- Insert new employee
-        INSERT INTO employee (employee_no, firstname, middlename, lastname, suffix, department_id, position_id, salary, isDeleted)
-        VALUES (@p_employee_no, @p_firstname, @p_middlename, @p_lastname, @p_suffix, @p_department_id, @p_position_id, @p_salary, 0);
-
-        -- Get the new employee ID
-        SET @p_id = SCOPE_IDENTITY();
-        SET @status = 1; -- Insert successful
-    END
-    ELSE
-    BEGIN
-        -- Check if Employee exists
-        IF EXISTS (SELECT 1 FROM employee WHERE id = @p_id AND isDeleted = 0)
-        BEGIN
-            -- Update existing employee
-            UPDATE employee
-            SET firstname = @p_firstname,
-                middlename = @p_middlename,
-                lastname = @p_lastname,
-                suffix = @p_suffix,
-                department_id = @p_department_id,
-                position_id = @p_position_id,
-                salary = @p_salary
-            WHERE id = @p_id;
-            
-            SET @status = 2; -- Update successful
-        END
-        ELSE
-        BEGIN
-            SET @status = -1; -- Employee not found
-        END
-    END
-END;
-GO
-
--- sp_save_employee_allowance
+-- sp_save_employee_allowance *** NOT YET TESTED
 
 CREATE PROCEDURE [dbo].[sp_save_employee_allowance]
     @p_employee_id INT,
@@ -712,7 +843,7 @@ BEGIN
 END;
 GO
 
--- sp_save_employee_attendance
+-- sp_save_employee_attendance *** NOT YET TESTED
 
 CREATE PROCEDURE [dbo].[sp_save_employee_attendance]
     @p_employee_id INT,
@@ -725,79 +856,6 @@ BEGIN
     VALUES (@p_employee_id, @p_log_type, @p_datetime_log);
 
     -- Set status to indicate success
-    SET @status = 1;
-END;
-GO
-
--- sp_save_payroll
-
-CREATE PROCEDURE [dbo].[sp_save_payroll]
-    @id INT OUTPUT,  -- Make @id an OUTPUT parameter
-    @date_from DATE,
-    @date_to DATE,
-    @type INT,
-    @ref_no NVARCHAR(50) OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF @id IS NULL OR @id = 0
-    BEGIN
-        -- Generate a reference number (You can customize this)
-        DECLARE @new_ref_no NVARCHAR(50);
-        SET @new_ref_no = 'PAY-' + FORMAT(GETDATE(), 'yyyyMMddHHmmss');
-
-        -- Insert new payroll record
-        INSERT INTO payroll (date_from, date_to, type, ref_no)
-        VALUES (@date_from, @date_to, @type, @new_ref_no);
-
-        -- Get the newly inserted payroll ID and Reference Number
-        SET @id = SCOPE_IDENTITY();
-        SET @ref_no = @new_ref_no;
-    END
-    ELSE
-    BEGIN
-        -- Update existing payroll
-        UPDATE payroll
-        SET date_from = @date_from,
-            date_to = @date_to,
-            type = @type
-        WHERE id = @id;
-
-        -- Get the reference number
-        SELECT @ref_no = ref_no FROM payroll WHERE id = @id;
-    END
-END;
-GO
-
--- sp_save_position
-
-CREATE PROCEDURE [dbo].[sp_save_position]
-    @p_id INT OUTPUT,
-    @p_name NVARCHAR(250),
-    @p_department_id INT,
-    @p_isDeleted BIT,
-    @status INT OUTPUT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF @p_id IS NULL OR @p_id = 0
-    BEGIN
-        INSERT INTO position (name, department_id, isDeleted) 
-        VALUES (@p_name, @p_department_id, @p_isDeleted);
-
-        SET @p_id = SCOPE_IDENTITY(); -- Get the new ID
-    END
-    ELSE
-    BEGIN
-        UPDATE position 
-        SET name = @p_name, 
-            department_id = @p_department_id,
-            isDeleted = @p_isDeleted
-        WHERE id = @p_id;
-    END
-
     SET @status = 1;
 END;
 GO

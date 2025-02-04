@@ -1,136 +1,80 @@
 <?php
-session_start();
-header('Content-Type: application/json');
-include 'admin_class.php';
-$crud = new Action();
-
-if(isset($_GET['action'])) {
-    $action = $_GET['action'];
-    if($action == 'login') {
-        echo $crud->login();
-        exit;
-    } elseif ($action == 'logout') { // Use elseif
-        $logout = $crud->logout();
-        if ($logout) {
-            echo $logout;
-        }
-    } elseif ($action == 'save_user') { // Use elseif
-        $save = $crud->save_user();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == 'update_user') { // Add this block for update_user
-        $update = $crud->update_user();
-        if ($update) {
-            echo $update;
-        }
-    } elseif ($action == 'delete_user') { // Use elseif
-        $save = $crud->delete_user();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_employee") { // Use elseif
-        $save = $crud->save_employee();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_employee") { // Use elseif
-        $save = $crud->delete_employee();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_department") { // Use elseif
-        $save = $crud->save_department();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_department") { // Use elseif
-        $save = $crud->delete_department();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_position") { // Use elseif
-        $save = $crud->save_position();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_position") { // Use elseif
-        $save = $crud->delete_position();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_allowances") { // Use elseif
-        $save = $crud->save_allowances();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_allowances") { // Use elseif
-        $save = $crud->delete_allowances();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_employee_allowance") { // Use elseif
-        $save = $crud->save_employee_allowance();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_employee_allowance") { // Use elseif
-        $save = $crud->delete_employee_allowance();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_deductions") { // Use elseif
-        $save = $crud->save_deductions();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_deductions") { // Use elseif
-        $save = $crud->delete_deductions();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_employee_deduction") { // Use elseif
-        $save = $crud->save_employee_deduction();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_employee_deduction") { // Use elseif
-        $save = $crud->delete_employee_deduction();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_employee_attendance") { // Use elseif
-        $save = $crud->save_employee_attendance();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_employee_attendance") { // Use elseif
-        $save = $crud->delete_employee_attendance();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_employee_attendance_single") { // Use elseif
-        $save = $crud->delete_employee_attendance_single();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "save_payroll") { // Use elseif
-        $save = $crud->save_payroll();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "delete_payroll") { // Use elseif
-        $save = $crud->delete_payroll();
-        if ($save) {
-            echo $save;
-        }
-    } elseif ($action == "calculate_payroll") { // Use elseif
-        $save = $crud->calculate_payroll();
-        if ($save) {
-            echo $save;
-        }
-    }
-} else {
-    echo json_encode(['success' => false, 'message' => 'Invalid action.']);
+ob_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
 }
+include 'db_connect.php';
+include 'admin_class.php';
+$admin = new Action();
+extract($_POST);
+$action = $_GET['action'] ?? '';
+
+if ($action == 'login') {
+    echo $admin->login();
+}
+if ($action == 'logout') {
+    echo $admin->logout();
+}
+if ($action == 'save_user') {
+    echo $admin->save_user();
+}
+if ($action == 'delete_user') {
+    echo $admin->delete_user();
+}
+if ($action == 'load_employee_table') {
+    echo $admin->load_employee_table();
+}
+if ($action == 'save_employee') {
+    echo $admin->save_employee();
+}
+if ($action == 'delete_employee') {
+    echo $admin->delete_employee();
+}
+if ($action == 'save_department') {
+    echo $admin->save_department();
+}
+if ($action == 'delete_department') {
+    echo $admin->delete_department();
+}
+if ($action == 'save_position') {
+    echo $admin->save_position();
+}
+if ($action == 'delete_position') {
+    echo $admin->delete_position();
+}
+if ($action == 'save_allowances') {
+    echo $admin->save_allowances();
+}
+if ($action == 'delete_allowances') {
+    echo $admin->delete_allowances();
+}
+if ($action == 'save_deductions') {
+    echo $admin->save_deductions();
+}
+if ($action == 'delete_deductions') {
+    echo $admin->delete_deductions();
+}
+if ($action == 'save_attendance') {
+    echo $admin->save_attendance();
+}
+if ($action == 'delete_attendance') {
+    echo $admin->delete_attendance();
+}
+if ($action == 'save_payroll') {
+    echo $admin->save_payroll();
+}
+if ($action == 'delete_payroll') {
+    echo $admin->delete_payroll();
+}
+if ($action == 'save_payroll_items') {
+    echo $admin->save_payroll_items();
+}
+if ($action == 'delete_payroll_items') {
+    echo $admin->delete_payroll_items();
+}
+if ($action == 'update_attendance') {
+    echo $admin->update_attendance();
+}
+
+ob_end_flush();
 ?>

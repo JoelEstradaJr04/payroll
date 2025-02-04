@@ -74,20 +74,29 @@ $('.edit_user').click(function(){
 $('.delete_user').click(function(){
 		_conf("Are you sure to delete this user?","delete_user",[$(this).attr('data-id')])
 	})
-function delete_user($id){
-	start_load()
-	$.ajax({
-		url:'ajax.php?action=delete_user',
-		method:'POST',
-		data:{id:$id},
-		success:function(resp){
-			if(resp==1){
-				alert_toast("Data successfully deleted",'success')
-				//setTimeout(function(){
-				//	location.reload()
-				//},1500)
-			}
-		}
-	})
+    function delete_user($id){
+    start_load()
+    $.ajax({
+        url:'ajax.php?action=delete_user',
+        method:'POST',
+        data:{id:$id},
+        dataType: 'json',
+        success:function(resp){
+            if(resp.success){
+                alert_toast(resp.message,'success')
+                setTimeout(function(){
+                    location.reload()
+                },1500)
+            } else {
+                alert_toast(resp.message,'error')
+            }
+            end_load()
+        },
+        error: function(err) {
+            alert_toast("An error occurred",'error')
+            console.log(err)
+            end_load()
+        }
+    })
 }
 </script>

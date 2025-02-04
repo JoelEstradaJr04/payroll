@@ -61,42 +61,57 @@
 </div>
 <script type="text/javascript">
     $(document).ready(function () {
-        $('#table').DataTable();
+        // Initialize DataTable
+        var table = $('#table').DataTable();
 
-        $('.edit_employee').click(function () {
+        // Use event delegation for dynamically added elements
+        $(document).on('click', '.edit_employee', function () {
             var $id = $(this).attr('data-id');
             uni_modal("Edit Employee", "manage_employee.php?id=" + $id)
-
         });
-        $('.view_employee').click(function () {
+
+        $(document).on('click', '.view_employee', function () {
             var $id = $(this).attr('data-id');
             uni_modal("Employee Details", "view_employee.php?id=" + $id, "mid-large")
-
         });
+
         $('#new_emp_btn').click(function () {
             uni_modal("New Employee", "manage_employee.php")
-        })
-        $('.remove_employee').click(function () {
+        });
+
+        $(document).on('click', '.remove_employee', function () {
             _conf("Are you sure to delete this employee?", "remove_employee", [$(this).attr('data-id')])
-        })
+        });
     });
 
-    function remove_employee(id) {
+    function remove_employee($id) {
         start_load()
         $.ajax({
             url: 'ajax.php?action=delete_employee',
-            method: "POST",
-            data: { id: id },
-            error: err => console.log(err),
+            method: 'POST',
+            data: { id: $id },
             success: function (resp) {
-                if (resp == 1) {
-                    alert_toast("Employee's data successfully deleted", "success");
-                    setTimeout(function () {
-                        location.reload();
-
-                    }, 1000)
+                try {
+                    var response = JSON.parse(resp);
+                    if (response.status === 3) {
+                        alert_toast(response.message, "success");
+                        setTimeout(function () {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        alert_toast(response.message, "error");
+                    }
+                } catch (e) {
+                    console.error("Error parsing response:", e);
+                    alert_toast("An error occurred", "error");
                 }
-            } //! Done
-        })
+                end_load();
+            },
+            error: function (xhr, status, error) {
+                console.error("Ajax error:", error);
+                alert_toast("An error occurred", "error");
+                end_load();
+            }
+        });
     }
 </script>

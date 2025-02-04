@@ -8,7 +8,7 @@ class Action {
 
     private function connect() {
         $serverName = "ESTRADAJR\SQLEXPRESS";
-        $database = "payroll";
+        $database = "payroll1";
         $username = "sa";
         $password = "password";
 
@@ -456,85 +456,101 @@ class Action {
 		$params = array(
 			$id, // @UserID
 			array(&$status, SQLSRV_PARAM_OUT),
-			array(&$message, SQLSRV_PARAM_OUT)
+			array(&$message, SQLSRV_PARAM_OUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR))
 		);
 	
 		// Prepare and execute the statement
 		$stmt = sqlsrv_prepare($conn, $query, $params);
 	
 		if ($stmt === false) {
-			die(json_encode(['success' => false, 'message' => sqlsrv_errors()]));
+			return json_encode(['success' => false, 'message' => sqlsrv_errors()]);
 		}
 	
 		if (sqlsrv_execute($stmt)) {
 			return json_encode(['success' => ($status == 1), 'message' => $message]);
-		} else {
-			return json_encode(['success' => false, 'message' => 'Database error occurred.']);
 		}
+		
+		return json_encode(['success' => false, 'message' => 'Database error occurred.']);
 	}
 
 	//! DONE
-	function save_employee() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
-	
-		// Define the output parameters
-		$status = 0;
-		$id = (!empty($id)) ? $id : 0; // Ensure ID is set to 0 for new records
-		$employee_no = (!empty($employee_no)) ? $employee_no : null;
-	
-		// Prepare stored procedure call
-		$query = "{CALL sp_save_employee(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
-		$params = array(
-			array(&$id, SQLSRV_PARAM_INOUT), // Employee ID as input/output
-			&$employee_no,  // Employee No (If auto-generated, can be null)
-			&$firstname,
-			&$middlename,
-			&$lastname,
-			&$suffix,
-			&$department_id,
-			&$position_id,
-			&$salary,
-			array(&$status, SQLSRV_PARAM_INOUT) // Output status
-		);
-	
-		// Execute stored procedure
-		$stmt = sqlsrv_query($conn, $query, $params);
-	
-		if ($stmt === false) {
-			die("Error saving employee: " . print_r(sqlsrv_errors(), true)); // Debugging
-		}
-	
-		return $status; // 1 = Insert, 2 = Update, -1 = Not Found, -2 = FK Error
-	}
-	
+
+    function save_employee() {
+        extract($_POST);
+        $conn = $this->conn;
+
+        // Define output parameters
+        $status = 0;
+        $message = '';
+        $id = (!empty($id)) ? $id : 0;
+        $employee_no = (!empty($employee_no)) ? $employee_no : null;
+
+        // Prepare stored procedure call
+        $query = "{CALL sp_save_employee(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
+        $params = array(
+            array(&$id, SQLSRV_PARAM_INOUT),
+            &$employee_no,
+            &$firstname,
+            &$middlename,
+            &$lastname,
+            &$suffix,
+            &$department_id,
+            &$position_id,
+            &$salary,
+            array(&$status, SQLSRV_PARAM_INOUT),
+            array(&$message, SQLSRV_PARAM_INOUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR), SQLSRV_SQLTYPE_NVARCHAR(200))
+        );
+
+        $stmt = sqlsrv_query($conn, $query, $params);
+
+        if ($stmt === false) {
+            error_log("Error in save_employee: " . print_r(sqlsrv_errors(), true));
+            return json_encode(array(
+                'status' => -99,
+                'message' => 'Database error occurred'
+            ));
+        }
+
+        return json_encode(array(
+            'status' => $status,
+            'message' => $message
+        ));
+    }
+
+
 	//! DONE
-	function delete_employee() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
-	
-		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "EXEC SP_Delete_Employee @p_id= ?";
-		$params = array($id);
-	
-		// Prepare the statement using sqlsrv_prepare
-		$stmt = sqlsrv_prepare($conn, $query, $params);
-	
-		// Check if the preparation succeeded
-		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
-		}
-	
-		// Execute the stored procedure
-		if (sqlsrv_execute($stmt)) {
-			// Fetch result
-			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-				return $row['status']; // Should return 1 if successful
-			}
-		}
-	
-		return 0; // Failure case
-	}
+    function delete_employee() {
+        extract($_POST);
+        $conn = $this->conn;
+
+        // Define output parameters
+        $status = 0;
+        $message = '';
+
+        // Prepare stored procedure call
+        $query = "{CALL sp_delete_employee(?, ?, ?)}";
+        $params = array(
+            &$id,
+            array(&$status, SQLSRV_PARAM_INOUT),
+            array(&$message, SQLSRV_PARAM_INOUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR), SQLSRV_SQLTYPE_NVARCHAR(200))
+        );
+
+        $stmt = sqlsrv_query($conn, $query, $params);
+
+        if ($stmt === false) {
+            error_log("Error in delete_employee: " . print_r(sqlsrv_errors(), true));
+            return json_encode(array(
+                'status' => -99,
+                'message' => 'Database error occurred'
+            ));
+        }
+
+        return json_encode(array(
+            'status' => $status,
+            'message' => $message
+        ));
+    }
+
 	
 	// TODO:
 	function save_employee_allowance() {
@@ -1001,6 +1017,53 @@ class Action {
 			unset($_SESSION[$key]);
 		}
 		header("location:login.php");
+	}
+
+	function load_employee_table() {
+		$conn = $this->conn;
+		
+		$sql = "SELECT e.*, d.name as department_name, p.name as position_name 
+				FROM employee e 
+				LEFT JOIN department d ON e.department_id = d.id 
+				LEFT JOIN position p ON e.position_id = p.id 
+				WHERE e.isDeleted = 0 
+				ORDER BY e.id DESC";
+				
+		$stmt = sqlsrv_query($conn, $sql);
+		
+		if($stmt === false) {
+			die(print_r(sqlsrv_errors(), true));
+		}
+		
+		ob_start(); // Start output buffering
+		?>
+		<table class="table table-bordered table-hover">
+			<thead>
+				<tr>
+					<th>Employee No</th>
+					<th>Name</th>
+					<th>Department</th>
+					<th>Position</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php while($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)): ?>
+				<tr>
+					<td><?php echo $row['employee_no'] ?></td>
+					<td><?php echo $row['lastname'].', '.$row['firstname'].' '.$row['middlename'].' '.$row['suffix'] ?></td>
+					<td><?php echo $row['department_name'] ?></td>
+					<td><?php echo $row['position_name'] ?></td>
+					<td>
+						<button type="button" class="btn btn-sm btn-primary edit_employee" data-id="<?php echo $row['id'] ?>">Edit</button>
+						<button type="button" class="btn btn-sm btn-danger delete_employee" data-id="<?php echo $row['id'] ?>">Delete</button>
+					</td>
+				</tr>
+				<?php endwhile; ?>
+			</tbody>
+		</table>
+		<?php
+		return ob_get_clean(); // Return the buffered content
 	}
 
 }
