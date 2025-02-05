@@ -2,7 +2,7 @@
 
 <div class="container-fluid">
     <div class="col-lg-12">
-        <form action="" id="employee-attendance">
+    <form action="ajax.php?action=save_employee_attendance" id="employee-attendance" method="POST">
             <div class="row form-group">
                 <div class="col-md-4">
                     <label for="" class="control-label">Employee</label>
@@ -114,26 +114,25 @@
 
     })
     $(document).ready(function () {
-        $('#employee-attendance').submit(function (e) {
-            e.preventDefault()
-            start_load();
-            $.ajax({
-                url: 'ajax.php?action=save_employee_attendance',
-                method: "POST",
-                data: $(this).serialize(),
-                error: err => console.log(err), // Added error logging
-                success: function (resp) {
-                    if (resp == 1) {
-                        alert_toast("Attendance data successfully saved", "success");
-                        setTimeout(function () {
-                            location.reload()
-                        }, 1000)
-                    } else {
-                        console.error("Error saving attendance:", resp); // Log the error response
-                        alert_toast("Error saving attendance. Please check the console for details.", "danger"); // Alert the user
-                    }
+    $("#employee-attendance").submit(function(e) { 
+        e.preventDefault(); // Prevents default form action
+        
+        $.ajax({
+            url: "ajax.php?action=save_employee_attendance",
+            method: "POST",
+            data: $(this).serialize(),
+            success: function(response) {
+                if (response == 1) {
+                    alert("Attendance Saved Successfully");
+                    location.reload();
+                } else {
+                    alert("Error saving attendance!");
                 }
-            })
-        })
-    })
+            },
+            error: function(xhr, status, error) {
+                console.log("AJAX Error: ", xhr.responseText);
+            }
+        });
+    });
+});
 </script>

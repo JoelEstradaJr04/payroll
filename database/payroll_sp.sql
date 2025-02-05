@@ -76,8 +76,7 @@ CREATE PROCEDURE [dbo].[sp_save_user]
 			SET @Status = 0;
 			SET @Message = ERROR_MESSAGE();
 		END CATCH
-	END
-	
+END;	
 GO
 
 -- sp_save_allowances [UPDATED!!!]
@@ -350,6 +349,31 @@ BEGIN
 END;
 GO
 
+-- sp_save_employee_attendance [UPDATED!!!] could add UPDATE
+
+CREATE PROCEDURE [dbo].[sp_save_employee_attendance]
+    @p_employee_id INT,
+    @p_log_type NVARCHAR(50),
+    @p_datetime_log DATETIME,
+    @status INT OUTPUT -- Add output parameter
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY -- Add a TRY block for error handling
+        INSERT INTO attendance (employee_id, log_type, datetime_log)
+        VALUES (@p_employee_id, @p_log_type, @p_datetime_log);
+
+        -- Set status to indicate success
+        SET @status = 1;
+    END TRY
+    BEGIN CATCH
+        SET @status = 0;  -- Indicate failure
+    END CATCH
+END; -- Added semicolon here
+GO
+
+
 /*
 **
 ** DELETE SPs
@@ -501,6 +525,58 @@ BEGIN
 END;
 GO
 
+-- sp_delete_employee_attendance_single [UPDATED!!!]
+CREATE PROCEDURE sp_delete_employee_attendance_single
+    @attendance_id INT,
+    @output_status INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        UPDATE attendance
+        SET isDeleted = 1
+        WHERE id = @attendance_id
+        AND isDeleted = 0;  -- Only update if not already deleted
+        
+        SET @output_status = CASE WHEN @@ROWCOUNT > 0 THEN 1 ELSE 0 END;
+    END TRY
+    BEGIN CATCH
+        SET @output_status = 0;
+    END CATCH
+END
+GO
+
+-- sp_delete_employee_attendance [UPDATED!!!]
+CREATE PROCEDURE sp_delete_employee_attendance
+    @id VARCHAR(50),  -- Changed parameter name to match PHP
+    @output_status INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        DECLARE @employee_id INT,
+                @date DATE;
+        
+        -- Split the compound key
+        SET @employee_id = CAST(SUBSTRING(@id, 1, CHARINDEX('_', @id) - 1) AS INT);
+        SET @date = CAST(SUBSTRING(@id, CHARINDEX('_', @id) + 1, LEN(@id)) AS DATE);
+        
+        UPDATE attendance
+        SET isDeleted = 1
+        WHERE employee_id = @employee_id
+        AND CAST(datetime_log AS DATE) = @date
+        AND isDeleted = 0;  -- Only update if not already deleted
+        
+        SET @output_status = CASE WHEN @@ROWCOUNT > 0 THEN 1 ELSE 0 END;
+    END TRY
+    BEGIN CATCH
+        SET @output_status = 0;
+    END CATCH
+END
+GO	
+
 -- sp_delete_payroll_item *** NOT YET TESTED
 CREATE PROCEDURE [dbo].[sp_delete_payroll_item]
     @p_id INT
@@ -560,76 +636,44 @@ GO
 
 -- sp_delete_user ** NOT WORKING
 CREATE PROCEDURE [dbo].[sp_delete_user]
-	@UserID INT,
-	@Status INT OUTPUT,
-	@Message NVARCHAR(255) OUTPUT
-AS
-BEGIN
-	SET NOCOUNT ON;
-	BEGIN TRY
-		-- Check if user exists and not already deleted
-		IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID)
-		BEGIN
-			SET @Status = 0
-			SET @Message = 'User not found'
-			RETURN
-		END
-
-		IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 1)
-		BEGIN
-			SET @Status = 0 
-			SET @Message = 'User already deleted'
-			RETURN
-		END
-
-		-- Get employee_id for this user
-		DECLARE @EmployeeID INT
-		SELECT @EmployeeID = employee_id FROM users WHERE id = @UserID
-
-		-- Soft delete the user record
-		UPDATE users 
-		SET isDeleted = 1
-		WHERE id = @UserID
-
-		SET @Status = 1
-		SET @Message = 'User successfully deleted'
-	END TRY
-	BEGIN CATCH
-		SET @Status = 0
-		SET @Message = ERROR_MESSAGE()
-	END CATCH
-END
-GO
-
--- sp_delete_employee_attendance_single *** NOT YET TESTED
-CREATE PROCEDURE [dbo].[sp_delete_attendance]
-    @p_id INT
+    @UserID INT,
+    @Status INT OUTPUT,
+    @Message NVARCHAR(255) OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
+    BEGIN TRY
+        -- Check if user exists and not already deleted
+        IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID)  -- Corrected condition
+        BEGIN
+            SET @Status = 0;
+            SET @Message = 'User not found';
+            RETURN;
+        END
 
-    IF EXISTS (SELECT 1 FROM attendance WHERE id = @p_id)
-    BEGIN
-        UPDATE attendance SET isDeleted = 1 WHERE id = @p_id;
-        SELECT 1 AS status;
-    END
-    ELSE
-    BEGIN
-        SELECT 0 AS status;
-    END
-END;
+        IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 1) -- Corrected condition
+        BEGIN
+            SET @Status = 0;
+            SET @Message = 'User already deleted';
+            RETURN;
+        END
+
+        -- Soft delete the user record
+        UPDATE users
+        SET isDeleted = 1
+        WHERE id = @UserID;
+
+        SET @Status = 1;
+        SET @Message = 'User successfully deleted';
+    END TRY
+    BEGIN CATCH
+        SET @Status = 0;
+        SET @Message = ERROR_MESSAGE();
+    END CATCH
+END; -- Added semicolon here
 GO
 
--- sp_delete_employee_attendance *** NOT YET TESTED
 
-CREATE PROCEDURE [dbo].[sp_delete_employee_attendance]
-    @p_employee_id INT,
-    @p_date DATE
-AS
-BEGIN
-    DELETE FROM attendance WHERE employee_id = @p_employee_id AND CAST(datetime_log AS DATE) = @p_date;
-END;
-GO
 
 /*
 **
@@ -835,28 +879,18 @@ CREATE PROCEDURE [dbo].[sp_save_employee_allowance]
     @p_allowance_id INT,
     @p_type NVARCHAR(50),
     @p_amount DECIMAL(10,2),
-    @p_effective_date DATE
-AS
-BEGIN
-    INSERT INTO employee_allowances (employee_id, allowance_id, type, amount, effective_date)
-    VALUES (@p_employee_id, @p_allowance_id, @p_type, @p_amount, @p_effective_date);
-END;
-GO
-
--- sp_save_employee_attendance *** NOT YET TESTED
-
-CREATE PROCEDURE [dbo].[sp_save_employee_attendance]
-    @p_employee_id INT,
-    @p_log_type NVARCHAR(50),
-    @p_datetime_log DATETIME,
+    @p_effective_date DATE,
     @status INT OUTPUT -- Add output parameter
 AS
 BEGIN
-    INSERT INTO attendance (employee_id, log_type, datetime_log)
-    VALUES (@p_employee_id, @p_log_type, @p_datetime_log);
-
-    -- Set status to indicate success
-    SET @status = 1;
-END;
+    SET NOCOUNT ON;
+    BEGIN TRY
+        INSERT INTO employee_allowances (employee_id, allowance_id, type, amount, effective_date)
+        VALUES (@p_employee_id, @p_allowance_id, @p_type, @p_amount, @p_effective_date);
+        SET @status = 1; -- Set status to success
+    END TRY
+    BEGIN CATCH
+        SET @status = 0; -- Set status to failure
+    END CATCH
+END; -- Added semicolon here
 GO
-

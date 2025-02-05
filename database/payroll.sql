@@ -1,11 +1,11 @@
--- UPDATED payroll.sql database as of February 3, 2025.
+-- UPDATED payroll.sql database as of February 5, 2025.
 -- All Constraints are NAMED.
 -- Proper references are implemented.
 -- VIEW is created.
 
-CREATE DATABASE payroll
+CREATE DATABASE payroll2
 GO
-USE payroll
+USE payroll2
 GO
 
 
@@ -413,5 +413,3 @@ FROM employee e
 INNER JOIN department d ON e.department_id = d.id
 INNER JOIN position p ON e.position_id = p.id
 WHERE e.isDeleted = 0;  -- Filter deleted employees
-
-

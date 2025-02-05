@@ -54,11 +54,14 @@ if ($action == 'save_deductions') {
 if ($action == 'delete_deductions') {
     echo $admin->delete_deductions();
 }
-if ($action == 'save_attendance') {
-    echo $admin->save_attendance();
+if ($action == 'save_employee_attendance') {
+    echo $admin->save_employee_attendance();
 }
-if ($action == 'delete_attendance') {
-    echo $admin->delete_attendance();
+if ($action == 'delete_employee_attendance') {
+    echo $admin->delete_employee_attendance();
+}
+if ($action == 'delete_employee_attendance_single') {
+    echo $admin->delete_employee_attendance_single();
 }
 if ($action == 'save_payroll') {
     echo $admin->save_payroll();

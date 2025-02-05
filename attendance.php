@@ -134,38 +134,52 @@
     });
 
     function remove_attendance(id) {
-        start_load()
-        $.ajax({
-            url: 'ajax.php?action=delete_employee_attendance',
-            method: "POST",
-            data: { id: id },
-            error: err => console.log(err),
-            success: function (resp) {
-                if (resp == 1) {
-                    alert_toast("Selected employee's time log data successfully deleted", "success");
-                    setTimeout(function () {
-                        location.reload();
-                    }, 1000)
-                }
+    start_load();
+    console.log("Removing attendance with ID:", id);
+    $.ajax({
+        url: 'ajax.php?action=delete_employee_attendance',
+        method: "POST",
+        data: { id: id.replace(/['"]+/g, '') },
+        success: function (resp) {
+            console.log("Server response:", resp);
+            if (resp == 1) {
+                alert_toast("Attendance record marked as deleted.", "success");
+                setTimeout(function () {
+                    location.reload();
+                }, 1000);
+            } else {
+                alert_toast("Error deleting record. Server returned: " + resp, "error");
             }
-        })
-    }
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX Error:", {xhr: xhr, status: status, error: error});
+            alert_toast("Error deleting record: " + error, "error");
+        }
+    });
+}
 
     function rem_att(id) {
-        start_load()
+        start_load();
+        console.log("Removing single attendance with ID:", id);
         $.ajax({
             url: 'ajax.php?action=delete_employee_attendance_single',
             method: "POST",
             data: { id: id },
-            error: err => console.log(err),
             success: function (resp) {
+                console.log("Server response:", resp);
                 if (resp == 1) {
-                    alert_toast("Selected employee's time log data successfully deleted", "success");
+                    alert_toast("Single time log marked as deleted.", "success");
                     setTimeout(function () {
                         location.reload();
-                    }, 1000)
+                    }, 1000);
+                } else {
+                    alert_toast("Error deleting time log. Server returned: " + resp, "error");
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX Error:", {xhr: xhr, status: status, error: error});
+                alert_toast("Error deleting time log: " + error, "error");
             }
-        })
+        });
     }
 </script>

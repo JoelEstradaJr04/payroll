@@ -1,6 +1,6 @@
 <?php
 $serverName = "ESTRADAJR\SQLEXPRESS";
-$database = "payroll1";
+$database = "payroll2";
 $username = "sa";
 $password = "password";
 
