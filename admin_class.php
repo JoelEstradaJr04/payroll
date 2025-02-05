@@ -8,7 +8,7 @@ class Action {
 
     private function connect() {
         $serverName = "DESKTOP-2A9KFDV\SQLEXPRESS";
-        $database = "PAYROLL9";
+        $database = "payroll9";
         $username = "sa";
         $password = "abc123";
 
