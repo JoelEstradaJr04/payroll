@@ -291,7 +291,7 @@ BEGIN
 
     IF @p_id IS NULL OR @p_id = 0
     BEGIN
-        INSERT INTO position (name, department_id, isDeleted) 
+        INSERT INTO [position] (name, department_id, isDeleted) 
         VALUES (@p_name, @p_department_id, @p_isDeleted);
 
         SET @p_id = SCOPE_IDENTITY(); -- Get the new ID
@@ -347,6 +347,23 @@ BEGIN
         -- Get the reference number
         SELECT @ref_no = ref_no FROM payroll WHERE id = @id;
     END
+END;
+GO
+
+-- sp_save_employee_attendance [UPDATED!!!] could add UPDATE
+
+CREATE PROCEDURE [dbo].[sp_save_employee_attendance]
+    @p_employee_id INT,
+    @p_log_type NVARCHAR(50),
+    @p_datetime_log DATETIME,
+    @status INT OUTPUT -- Add output parameter
+AS
+BEGIN
+    INSERT INTO attendance (employee_id, log_type, datetime_log)
+    VALUES (@p_employee_id, @p_log_type, @p_datetime_log);
+
+    -- Set status to indicate success
+    SET @status = 1;
 END;
 GO
 
@@ -501,6 +518,58 @@ BEGIN
 END;
 GO
 
+-- sp_delete_employee_attendance_single [UPDATED!!!]
+CREATE PROCEDURE sp_delete_employee_attendance_single
+    @attendance_id INT,
+    @output_status INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        UPDATE attendance
+        SET isDeleted = 1
+        WHERE id = @attendance_id
+        AND isDeleted = 0;  -- Only update if not already deleted
+        
+        SET @output_status = CASE WHEN @@ROWCOUNT > 0 THEN 1 ELSE 0 END;
+    END TRY
+    BEGIN CATCH
+        SET @output_status = 0;
+    END CATCH
+END
+GO
+
+-- sp_delete_employee_attendance [UPDATED!!!]
+CREATE PROCEDURE sp_delete_employee_attendance
+    @id VARCHAR(50),  -- Changed parameter name to match PHP
+    @output_status INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        DECLARE @employee_id INT,
+                @date DATE;
+        
+        -- Split the compound key
+        SET @employee_id = CAST(SUBSTRING(@id, 1, CHARINDEX('_', @id) - 1) AS INT);
+        SET @date = CAST(SUBSTRING(@id, CHARINDEX('_', @id) + 1, LEN(@id)) AS DATE);
+        
+        UPDATE attendance
+        SET isDeleted = 1
+        WHERE employee_id = @employee_id
+        AND CAST(datetime_log AS DATE) = @date
+        AND isDeleted = 0;  -- Only update if not already deleted
+        
+        SET @output_status = CASE WHEN @@ROWCOUNT > 0 THEN 1 ELSE 0 END;
+    END TRY
+    BEGIN CATCH
+        SET @output_status = 0;
+    END CATCH
+END
+GO	
+
 -- sp_delete_payroll_item *** NOT YET TESTED
 CREATE PROCEDURE [dbo].[sp_delete_payroll_item]
     @p_id INT
@@ -560,76 +629,47 @@ GO
 
 -- sp_delete_user ** NOT WORKING
 CREATE PROCEDURE [dbo].[sp_delete_user]
-	@UserID INT,
-	@Status INT OUTPUT,
-	@Message NVARCHAR(255) OUTPUT
-AS
-BEGIN
-	SET NOCOUNT ON;
-	BEGIN TRY
-		-- Check if user exists and not already deleted
-		IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID)
-		BEGIN
-			SET @Status = 0
-			SET @Message = 'User not found'
-			RETURN
-		END
-
-		IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 1)
-		BEGIN
-			SET @Status = 0 
-			SET @Message = 'User already deleted'
-			RETURN
-		END
-
-		-- Get employee_id for this user
-		DECLARE @EmployeeID INT
-		SELECT @EmployeeID = employee_id FROM users WHERE id = @UserID
-
-		-- Soft delete the user record
-		UPDATE users 
-		SET isDeleted = 1
-		WHERE id = @UserID
-
-		SET @Status = 1
-		SET @Message = 'User successfully deleted'
-	END TRY
-	BEGIN CATCH
-		SET @Status = 0
-		SET @Message = ERROR_MESSAGE()
-	END CATCH
-END
-GO
-
--- sp_delete_employee_attendance_single *** NOT YET TESTED
-CREATE PROCEDURE [dbo].[sp_delete_attendance]
-    @p_id INT
+    @UserID INT,
+    @Status INT OUTPUT,
+    @Message NVARCHAR(255) OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
+    BEGIN TRY
+        -- Check if user exists and not already deleted
+        IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID)
+        BEGIN
+            SET @Status = 0
+            SET @Message = 'User not found'
+            RETURN
+        END
 
-    IF EXISTS (SELECT 1 FROM attendance WHERE id = @p_id)
-    BEGIN
-        UPDATE attendance SET isDeleted = 1 WHERE id = @p_id;
-        SELECT 1 AS status;
-    END
-    ELSE
-    BEGIN
-        SELECT 0 AS status;
-    END
-END;
+        IF EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 1)
+        BEGIN
+            SET @Status = 0 
+            SET @Message = 'User already deleted'
+            RETURN
+        END
+
+        -- Get employee_id for this user
+        DECLARE @EmployeeID INT
+        SELECT @EmployeeID = employee_id FROM users WHERE id = @UserID
+
+        -- Soft delete the user record
+        UPDATE users 
+        SET isDeleted = 1
+        WHERE id = @UserID
+
+        SET @Status = 1
+        SET @Message = 'User successfully deleted'
+    END TRY
+    BEGIN CATCH
+        SET @Status = 0
+        SET @Message = ERROR_MESSAGE()
+    END CATCH
+END
 GO
 
--- sp_delete_employee_attendance *** NOT YET TESTED
-
-CREATE PROCEDURE [dbo].[sp_delete_employee_attendance]
-    @p_employee_id INT,
-    @p_date DATE
-AS
-BEGIN
-    DELETE FROM attendance WHERE employee_id = @p_employee_id AND CAST(datetime_log AS DATE) = @p_date;
-END;
-GO
 
 /*
 **
@@ -740,7 +780,7 @@ GO
 
 
 -- sp_update_user ** NOT WORKING
-CREATE PROCEDURE sp_update_user (
+CREATE PROCEDURE [dbo].[sp_update_user] (
     @UserID INT,
     @FirstName NVARCHAR(100),
     @MiddleName NVARCHAR(100),
@@ -748,7 +788,7 @@ CREATE PROCEDURE sp_update_user (
     @Suffix NVARCHAR(10),
     @EmployeeNo NVARCHAR(50),
     @Username NVARCHAR(50),
-    @Password NVARCHAR(255), -- Can be NULL if not changing
+    @Password NVARCHAR(255),
     @Type INT,
     @Status INT OUTPUT,
     @Message NVARCHAR(255) OUTPUT
@@ -756,68 +796,73 @@ CREATE PROCEDURE sp_update_user (
 AS
 BEGIN
     SET NOCOUNT ON;
-
     BEGIN TRY
+        -- Start a transaction
+        BEGIN TRANSACTION;
+
         DECLARE @EmployeeId INT;
 
-        -- Validate the user exists
-        IF NOT EXISTS (SELECT 1 FROM users WHERE id = @UserID AND isDeleted = 0)
-        BEGIN
-            SET @Status = 0;
-            SET @Message = 'User not found';
-            RETURN;
-        END
-
-        -- Validate associated employee (using provided name parts and employee_no)
-        SELECT @EmployeeId = id
-        FROM employee
-        WHERE firstname = @FirstName
-            AND middlename = @MiddleName
-            AND lastname = @LastName
-            AND suffix = @Suffix
-            AND employee_no = @EmployeeNo
-            AND isDeleted = 0;
+        -- Get the user's current employee_id
+        SELECT @EmployeeId = employee_id 
+        FROM users 
+        WHERE id = @UserID AND isDeleted = 0;
 
         IF @EmployeeId IS NULL
         BEGIN
             SET @Status = 0;
-            SET @Message = 'Employee not found';
+            SET @Message = 'User not found.';
+            ROLLBACK TRANSACTION;
             RETURN;
         END
 
-        -- Ensure the username is unique (excluding current user)
+        -- Update the employee details
+        UPDATE employee
+        SET firstname = @FirstName,
+            middlename = @MiddleName,
+            lastname = @LastName,
+            suffix = @Suffix,
+            employee_no = @EmployeeNo
+        WHERE id = @EmployeeId;
+
+        -- Check for duplicate username
         IF EXISTS (SELECT 1 FROM users WHERE username = @Username AND id <> @UserID AND isDeleted = 0)
         BEGIN
             SET @Status = 0;
-            SET @Message = 'Username already exists';
+            SET @Message = 'Username already exists.';
+            ROLLBACK TRANSACTION;
             RETURN;
         END
 
-        -- Update user record (conditionally update password)
+        -- Update user details
         UPDATE users
-        SET employee_id = @EmployeeId,
-            username = @Username,
+        SET username = @Username,
             type = @Type
         WHERE id = @UserID;
 
-        -- Conditionally update the password *after* the main update
+        -- Update password if provided
         IF @Password IS NOT NULL
         BEGIN
             UPDATE users
-            SET password = @Password  -- Now this is correct
+            SET password = @Password
             WHERE id = @UserID;
         END
 
+        -- Commit the transaction
+        COMMIT TRANSACTION;
+
         SET @Status = 1;
-        SET @Message = 'User successfully updated';
+        SET @Message = 'User updated successfully.';
     END TRY
     BEGIN CATCH
+        -- Rollback the transaction on error
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
         SET @Status = 0;
         SET @Message = ERROR_MESSAGE();
     END CATCH
 END
 GO
-
 
 /*
 	TO DO
@@ -843,20 +888,126 @@ BEGIN
 END;
 GO
 
--- sp_save_employee_attendance *** NOT YET TESTED
 
-CREATE PROCEDURE [dbo].[sp_save_employee_attendance]
-    @p_employee_id INT,
-    @p_log_type NVARCHAR(50),
-    @p_datetime_log DATETIME,
-    @status INT OUTPUT -- Add output parameter
+CREATE PROCEDURE [dbo].[sp_calculate_payroll]
+    @PayrollID INT
 AS
 BEGIN
-    INSERT INTO attendance (employee_id, log_type, datetime_log)
-    VALUES (@p_employee_id, @p_log_type, @p_datetime_log);
+    SET NOCOUNT ON;
+    
+    DECLARE @DateFrom DATE, @DateTo DATE, @Type TINYINT;
+    
+    -- Get payroll details
+    SELECT @DateFrom = date_from, @DateTo = date_to, @Type = type 
+    FROM payroll 
+    WHERE id = @PayrollID;
 
-    -- Set status to indicate success
-    SET @status = 1;
-END;
-GO
+    IF @DateFrom IS NULL OR @DateTo IS NULL OR @Type NOT IN (1, 2) BEGIN
+        PRINT 'Error: Invalid Payroll ID or Type';
+        RETURN;
+    END
 
+    -- Delete existing payroll items
+    DELETE FROM payroll_items WHERE payroll_id = @PayrollID;
+    
+    -- Define working days
+    DECLARE @WorkingDays INT = CASE WHEN @Type = 1 THEN 22 ELSE 11 END;
+    IF @WorkingDays = 0 BEGIN
+        PRINT 'Error: Working days cannot be zero';
+        RETURN;
+    END
+
+    DECLARE @CalcDays INT = DATEDIFF(DAY, @DateFrom, @DateTo) + 1;
+    
+    -- Process each employee
+    DECLARE @EmployeeID INT, @Salary FLOAT, @DailyRate FLOAT, @MinuteRate FLOAT;
+    DECLARE emp_cursor CURSOR FOR
+    SELECT id, salary FROM employee WHERE isDeleted = 0;
+    
+    OPEN emp_cursor;
+    FETCH NEXT FROM emp_cursor INTO @EmployeeID, @Salary;
+    
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @DailyRate = @Salary / 22;
+        SET @MinuteRate = (@DailyRate / 8) / 60;
+        
+        DECLARE @Present INT = 0, @Absent INT = 0, @Late INT = 0, @Net FLOAT = 0;
+        DECLARE @AllowAmount FLOAT = 0, @DedAmount FLOAT = 0;
+        
+        -- Calculate attendance
+        DECLARE @CurrentDate DATE, @MinutesWorked INT, @LateMinutes INT;
+        DECLARE @LogIn DATETIME, @LogOut DATETIME;
+        
+        DECLARE date_cursor CURSOR FOR
+        SELECT DISTINCT CONVERT(DATE, datetime_log) FROM attendance
+        WHERE employee_id = @EmployeeID AND CONVERT(DATE, datetime_log) BETWEEN @DateFrom AND @DateTo;
+        
+        OPEN date_cursor;
+        FETCH NEXT FROM date_cursor INTO @CurrentDate;
+        
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            -- Fetch morning logs
+            SELECT @LogIn = MIN(datetime_log), @LogOut = MAX(datetime_log) 
+            FROM attendance
+            WHERE employee_id = @EmployeeID AND log_type IN (1, 2) AND CONVERT(DATE, datetime_log) = @CurrentDate;
+            
+            IF @LogIn IS NOT NULL AND @LogOut IS NOT NULL
+            BEGIN
+                SET @MinutesWorked = DATEDIFF(MINUTE, @LogIn, @LogOut);
+                SET @LateMinutes = 240 - @MinutesWorked;
+                SET @Net = @Net + (@MinutesWorked * @MinuteRate);
+                SET @Late = @Late + @LateMinutes;
+                SET @Present = @Present + 0.5;
+            END
+            
+            -- Fetch afternoon logs
+            SELECT @LogIn = MIN(datetime_log), @LogOut = MAX(datetime_log) 
+            FROM attendance
+            WHERE employee_id = @EmployeeID AND log_type IN (3, 4) AND CONVERT(DATE, datetime_log) = @CurrentDate;
+            
+            IF @LogIn IS NOT NULL AND @LogOut IS NOT NULL
+            BEGIN
+                SET @MinutesWorked = DATEDIFF(MINUTE, @LogIn, @LogOut);
+                SET @LateMinutes = 240 - @MinutesWorked;
+                SET @Net = @Net + (@MinutesWorked * @MinuteRate);
+                SET @Late = @Late + @LateMinutes;
+                SET @Present = @Present + 0.5;
+            END
+            
+            FETCH NEXT FROM date_cursor INTO @CurrentDate;
+        END
+        
+        CLOSE date_cursor;
+        DEALLOCATE date_cursor;
+        
+        -- Ensure Absent is not negative
+        SET @Absent = CASE WHEN (@WorkingDays - @Present) < 0 THEN 0 ELSE (@WorkingDays - @Present) END;
+
+        -- Fetch Allowances
+        SELECT @AllowAmount = SUM(amount)
+        FROM employee_allowances
+        WHERE employee_id = @EmployeeID AND (type = @Type OR effective_date BETWEEN @DateFrom AND @DateTo);
+        
+        -- Fetch Deductions
+        SELECT @DedAmount = SUM(amount)
+        FROM employee_deductions
+        WHERE employee_id = @EmployeeID AND (type = @Type OR effective_date BETWEEN @DateFrom AND @DateTo);
+        
+        -- Compute net pay
+        SET @Net = @Net + ISNULL(@AllowAmount, 0) - ISNULL(@DedAmount, 0);
+        
+        -- Insert payroll item
+        INSERT INTO payroll_items (payroll_id, employee_id, absent, present, late, salary, allowance_amount, deduction_amount, net)
+        VALUES (@PayrollID, @EmployeeID, @Absent, @Present, @Late, @Salary, ISNULL(@AllowAmount, 0), ISNULL(@DedAmount, 0), @Net);
+        
+        FETCH NEXT FROM emp_cursor INTO @EmployeeID, @Salary;
+    END
+    
+    CLOSE emp_cursor;
+    DEALLOCATE emp_cursor;
+
+    -- Update payroll status
+    UPDATE payroll SET status = 1 WHERE id = @PayrollID;
+END

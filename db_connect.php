@@ -1,8 +1,8 @@
 <?php
-$serverName = "ESTRADAJR\SQLEXPRESS";
-$database = "payroll1";
+$serverName = "DESKTOP-2A9KFDV\SQLEXPRESS";
+$database = "PAYROLL9";
 $username = "sa";
-$password = "password";
+$password = "abc123";
 
 $connectionOptions = array(
     "Database" => $database,

@@ -18,6 +18,9 @@ if ($action == 'logout') {
 if ($action == 'save_user') {
     echo $admin->save_user();
 }
+if ($action == 'update_user') {
+    echo $admin->update_user();
+}
 if ($action == 'delete_user') {
     echo $admin->delete_user();
 }
@@ -54,11 +57,14 @@ if ($action == 'save_deductions') {
 if ($action == 'delete_deductions') {
     echo $admin->delete_deductions();
 }
-if ($action == 'save_attendance') {
-    echo $admin->save_attendance();
+if ($action == 'save_employee_attendance') {
+    echo $admin->save_employee_attendance();
 }
-if ($action == 'delete_attendance') {
-    echo $admin->delete_attendance();
+if ($action == 'delete_employee_attendance') {
+    echo $admin->delete_employee_attendance();
+}
+if ($action == 'delete_employee_attendance_single') {
+    echo $admin->delete_employee_attendance_single();
 }
 if ($action == 'save_payroll') {
     echo $admin->save_payroll();
@@ -66,6 +72,11 @@ if ($action == 'save_payroll') {
 if ($action == 'delete_payroll') {
     echo $admin->delete_payroll();
 }
+
+if ($action == 'calculate_payroll') {
+    echo $admin->calculate_payroll();
+}
+
 if ($action == 'save_payroll_items') {
     echo $admin->save_payroll_items();
 }

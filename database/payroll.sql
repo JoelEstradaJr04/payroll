@@ -1,4 +1,4 @@
--- UPDATED payroll.sql database as of February 3, 2025.
+-- UPDATED payroll.sql database as of February 5, 2025.
 -- All Constraints are NAMED.
 -- Proper references are implemented.
 -- VIEW is created.
@@ -342,11 +342,11 @@ INSERT INTO [attendance] ([employee_id], [log_type], [datetime_log], [date_updat
 INSERT INTO [users] ([employee_id], [username], [password], [type]) VALUES
 (1, 'isaac.newton', '3l@wsofmotion', 1),
 (3, 'jennifer.lopez.lawrence', 'hungerg@mes', 0);
-GO
 
 /* 
 ** Create VIEW tables
 */
+GO
 
 -- View Payroll_Items [UPDATED, NEW!]
 CREATE VIEW PayrollItemsWithRefNo AS
@@ -366,37 +366,34 @@ SELECT
     pi.net,
     pi.date_created,
     pi.isDeleted
-FROM
-    payroll_items pi
-INNER JOIN
-    payroll p ON pi.payroll_id = p.id;
-GO
+FROM payroll_items pi
+INNER JOIN payroll p ON pi.payroll_id = p.id;
+GO  -- Ensure separation between statements
 
 -- VIEW Users [UPDATED, NEW!]
-CREATE VIEW EmployeeUserView AS  -- Use ALTER VIEW to modify an existing view
-SELECT
-    e.id AS employee_id,
-    e.employee_no,
-    e.firstname,
-    e.middlename,
-    e.lastname,
+CREATE VIEW EmployeeUserView AS
+SELECT  
+    u.id AS id, -- Include the user's ID from the users table
+    e.id AS employee_id, 
+    e.employee_no, 
+    e.firstname, 
+    e.middlename, 
+    e.lastname, 
     e.suffix,
-    CASE
-        WHEN e.middlename = 'N/A' AND e.suffix = 'N/A' THEN e.firstname + ' ' + e.lastname
-        WHEN e.middlename = 'N/A' THEN e.firstname + ' ' + e.lastname + ' ' + e.suffix
-        WHEN e.suffix = 'N/A' THEN e.firstname + ' ' + e.middlename + ' ' + e.lastname
-        ELSE e.firstname + ' ' + e.middlename + ' ' + e.lastname + ' ' + e.suffix
+    CASE 
+        WHEN e.middlename = 'N/A' AND e.suffix = 'N/A' THEN e.firstname + ' ' + e.lastname 
+        WHEN e.middlename = 'N/A' THEN e.firstname + ' ' + e.lastname + ' ' + e.suffix 
+        WHEN e.suffix = 'N/A' THEN e.firstname + ' ' + e.middlename + ' ' + e.lastname 
+        ELSE e.firstname + ' ' + e.middlename + ' ' + e.lastname + ' ' + e.suffix 
     END AS full_name,
-    u.username,
-    u.type AS user_type,
-    u.isDeleted AS user_isDeleted,
+    u.username, 
+    u.type AS user_type, 
+    u.isDeleted AS user_isDeleted, 
     e.isDeleted AS employee_isDeleted
-FROM employee e
-INNER JOIN users u ON e.id = u.employee_id  -- Changed to INNER JOIN
-WHERE e.isDeleted = 0
-  AND u.isDeleted = 0;  -- Filter deleted records from BOTH tables
-GO
-
+FROM dbo.employee AS e 
+INNER JOIN dbo.users AS u ON e.id = u.employee_id
+WHERE e.isDeleted = 0 AND u.isDeleted = 0;
+GO  -- Ensure separation
 
 -- VIEW Employee [UPDATED, NEW!]
 CREATE VIEW EmployeeDetailsView AS
@@ -413,5 +410,4 @@ FROM employee e
 INNER JOIN department d ON e.department_id = d.id
 INNER JOIN position p ON e.position_id = p.id
 WHERE e.isDeleted = 0;  -- Filter deleted employees
-
-
+GO

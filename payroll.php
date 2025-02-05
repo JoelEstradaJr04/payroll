@@ -137,7 +137,7 @@
 				error:err=>console.log(err),
 				success:function(resp){
 						if(resp == 1){
-							alert_toast("Employee's data successfully deleted","success");
+							alert_toast("Payroll data successfully deleted","success");
 								setTimeout(function(){
 								location.reload();
 

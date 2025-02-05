@@ -52,7 +52,11 @@ foreach ($emp as $k => $v) {
                                     <p><small><?php echo $row['aname']; ?> Allowance</small></p>
                                     <p><small>Type: <?php echo $t_arr[$row['type']]; ?></small></p>
                                     <?php if ($row['type'] == 3): ?>
-                                    <p><small>Effective: <?php echo date("M d,Y", strtotime($row['effective_date'])); ?></small></p>
+                                    <!-- ... previous code ... -->
+                                    <?php if ($row['type'] == 3): ?>
+                                    <p><small>Effective: <?php echo $row['effective_date']->format("M d, Y"); ?></small></p>
+                                    <?php endif; ?>
+                                    <!-- ... rest of the code ... -->
                                     <?php endif; ?>
                                 </span>
                                 <button class="badge badge-danger badge-pill btn remove_allowance" type="button" data-id="<?php echo $row['id']; ?>"><i class="fa fa-trash"></i></button>
@@ -82,7 +86,11 @@ foreach ($emp as $k => $v) {
                                     <p><small><?php echo $row['dname']; ?></small></p>
                                     <p><small>Type: <?php echo $t_arr[$row['type']]; ?></small></p>
                                     <?php if ($row['type'] == 3): ?>
-                                    <p><small>Effective: <?php echo date("M d,Y", strtotime($row['effective_date'])); ?></small></p>
+                                    <!-- ... previous code ... -->
+                                    <?php if ($row['type'] == 3): ?>
+                                    <p><small>Effective: <?php echo $row['effective_date']->format("M d, Y"); ?></small></p>
+                                    <?php endif; ?>
+                                    <!-- ... rest of the code ... -->
                                     <?php endif; ?>
                                 </span>
                                 <button class="badge badge-danger badge-pill btn remove_deduction" type="button" data-id="<?php echo $row['id']; ?>"><i class="fa fa-trash"></i></button>

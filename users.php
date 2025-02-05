@@ -1,4 +1,5 @@
 <?php
+$current_user_id = $_SESSION['login_id'] ?? null; // Get the current user's ID
 include 'db_connect.php';
 ?>
 
@@ -23,7 +24,6 @@ include 'db_connect.php';
                     </thead>
                     <tbody>
                     <?php
-                        //! Use sqlsrv_query for SQL Server
                         $sql = "SELECT * FROM EmployeeUserView"; 
                         $stmt = sqlsrv_query($conn, $sql); // Execute query
 
@@ -33,6 +33,7 @@ include 'db_connect.php';
 
                         $i = 1;
                         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)): // Use sqlsrv_fetch_array
+                            $is_current_user = ($current_user_id == $row['id']); // Check if the row belongs to the current user
                     ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($row['employee_no']); ?></td>
@@ -48,7 +49,10 @@ include 'db_connect.php';
                                             <div class="dropdown-menu">
                                                 <a class="dropdown-item edit_user" href="javascript:void(0)" data-id='<?php echo $row['id']; ?>'>Edit</a>
                                                 <div class="dropdown-divider"></div>
-                                                <a class="dropdown-item delete_user" href="javascript:void(0)" data-id='<?php echo $row['id']; ?>'>Delete</a>
+                                                <!-- Hide Delete button for the current user -->
+                                                <?php if (!$is_current_user): ?>
+                                                    <a class="dropdown-item delete_user" href="javascript:void(0)" data-id='<?php echo $row['id']; ?>'>Delete</a>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     </center>

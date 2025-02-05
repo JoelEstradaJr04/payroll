@@ -7,10 +7,10 @@ class Action {
     }
 
     private function connect() {
-        $serverName = "ESTRADAJR\SQLEXPRESS";
-        $database = "payroll1";
+        $serverName = "DESKTOP-2A9KFDV\SQLEXPRESS";
+        $database = "PAYROLL9";
         $username = "sa";
-        $password = "password";
+        $password = "abc123";
 
         $connectionOptions = array(
             "Database" => $database,
@@ -441,37 +441,37 @@ class Action {
 //* 	TO DO LIST:
 
 
-	//! DONE
-	function delete_user() {
+function delete_user() {
 		extract($_POST);
 		$conn = $this->conn;
-	
+
 		// Prepare stored procedure call
 		$query = "{CALL sp_delete_user(?, ?, ?)}";
-	
+
 		// Define output parameters
 		$status = 0;
 		$message = "";
-	
+
 		$params = array(
 			$id, // @UserID
 			array(&$status, SQLSRV_PARAM_OUT),
 			array(&$message, SQLSRV_PARAM_OUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR))
 		);
-	
+
 		// Prepare and execute the statement
 		$stmt = sqlsrv_prepare($conn, $query, $params);
-	
+
 		if ($stmt === false) {
 			return json_encode(['success' => false, 'message' => sqlsrv_errors()]);
 		}
-	
+
 		if (sqlsrv_execute($stmt)) {
 			return json_encode(['success' => ($status == 1), 'message' => $message]);
 		}
 		
 		return json_encode(['success' => false, 'message' => 'Database error occurred.']);
 	}
+
 
 	//! DONE
 
@@ -675,104 +675,7 @@ class Action {
 	
 		return 0; // Failure case
 	}
-
-	//! DONE
-	function save_employee_attendance() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
 	
-		foreach ($employee_id as $k => $v) {
-			$datetime_log[$k] = date("Y-m-d H:i", strtotime($datetime_log[$k]));
-	
-			// Define the output parameter
-			$status = 0;
-			$outputParam = array(&$status); // Pass by reference
-	
-			$query = "DECLARE @output_status INT; 
-					  EXEC sp_save_employee_attendance ?, ?, ?, @output_status OUTPUT;
-					  SELECT @output_status;";
-	
-			$params = array($employee_id[$k], $log_type[$k], $datetime_log[$k]);
-	
-			// Execute Query
-			$stmt = sqlsrv_query($conn, $query, $params, array("Scrollable" => SQLSRV_CURSOR_STATIC));
-	
-			if ($stmt === false) {
-				die("SQL Execution Error: " . print_r(sqlsrv_errors(), true)); // Debugging
-			}
-	
-			// Fetch output parameter value
-			sqlsrv_fetch($stmt);
-			$status = sqlsrv_get_field($stmt, 0); 
-	
-			if ($status != 1) {
-				return 0; // Failure case
-			}
-		}
-	
-		return 1; // Success case
-	}
-	
-	
-	//! DONE
-	function delete_employee_attendance() {
-		extract($_POST);
-		$date = explode('_', $id);
-		$dt = date("Y-m-d", strtotime($date[1]));
-		$employee_id = $date[0];
-		
-		$conn = $this->conn; // Database connection
-	
-		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "EXEC sp_delete_employee_attendance ?, ?";
-		$params = array($employee_id, $dt);
-	
-		// Prepare the statement using sqlsrv_prepare
-		$stmt = sqlsrv_prepare($conn, $query, $params);
-	
-		// Check if the preparation succeeded
-		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
-		}
-	
-		// Execute the stored procedure
-		if (sqlsrv_execute($stmt)) {
-			// Fetch result
-			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-				return $row['status']; // Should return 1 if successful
-			}
-		}
-	
-		return 0; // Failure case
-	}
-
-	//! DONE
-	function delete_employee_attendance_single() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
-	
-		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "EXEC sp_delete_employee_attendance_single ?";
-		$params = array($id);
-	
-		// Prepare the statement using sqlsrv_prepare
-		$stmt = sqlsrv_prepare($conn, $query, $params);
-	
-		// Check if the preparation succeeded
-		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
-		}
-	
-		// Execute the stored procedure
-		if (sqlsrv_execute($stmt)) {
-			// Fetch result
-			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-				return $row['status']; // Should return 1 if successful
-			}
-		}
-	
-		return 0; // Failure case
-	}
 	
 	// TODO:
  
@@ -844,137 +747,87 @@ class Action {
 	
 	/// TO BE CHECKED
 	function calculate_payroll() {
-		extract($_POST);
+		if (!isset($_POST['id'])) {
+			die("Error: Missing payroll ID.");
+		}
 	
-		$am_in = "08:00";
-		$am_out = "12:00";
-		$pm_in = "13:00";
-		$pm_out = "17:00";
+		$id = $_POST['id']; // Get Payroll ID
 	
-		$this->conn->query("DELETE FROM payroll_items WHERE payroll_id = $id");
+		// Establish database connection
+		$conn = $this->conn;
 	
-		$pay = $this->conn->query("SELECT * FROM payroll WHERE id = $id")->fetch_array();
-		$employee = $this->conn->query("SELECT * FROM employee");
+		// Delete existing payroll items
+		$sql = "DELETE FROM payroll_items WHERE payroll_id = ?";
+		$stmt = sqlsrv_query($conn, $sql, [$id]);
+	
+		if ($stmt === false) {
+			die("Error deleting payroll items: " . print_r(sqlsrv_errors(), true));
+		}
+	
+		// Fetch payroll details
+		$sql = "SELECT * FROM payroll WHERE id = ?";
+		$stmt = sqlsrv_query($conn, $sql, [$id]);
+	
+		if ($stmt === false) {
+			die("Error fetching payroll data: " . print_r(sqlsrv_errors(), true));
+		}
+	
+		$pay = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+	
+		if (!$pay) {
+			die("Error: Payroll record not found.");
+		}
+	
+		if (!isset($pay['type']) || $pay['type'] == 0) {
+			die("Error: Invalid payroll type.");
+		}
 	
 		// Determine number of working days
 		$dm = ($pay['type'] == 1) ? 22 : 11;
-		$calc_days = $this->conn->query("SELECT DATEDIFF(DAY, '".$pay['date_from']."', '".$pay['date_to']."') AS days")->fetch_array()['days'];
 	
-		// Fetch attendance records
-		$att = $this->conn->query("SELECT * FROM attendance WHERE CONVERT(DATE, datetime_log) BETWEEN '".$pay['date_from']."' AND '".$pay['date_to']."' ORDER BY datetime_log ASC");
-	
-		while ($row = $att->fetch_array()) {
-			$date = date("Y-m-d", strtotime($row['datetime_log']));
-			if ($row['log_type'] == 1 || $row['log_type'] == 3) {
-				if (!isset($attendance[$row['employee_id']."_".$date]['log'][$row['log_type']])) {
-					$attendance[$row['employee_id']."_".$date]['log'][$row['log_type']] = $row['datetime_log'];
-				}
-			} else {
-				$attendance[$row['employee_id']."_".$date]['log'][$row['log_type']] = $row['datetime_log'];
-			}
+		if ($dm == 0) {
+			die("Error: Division by zero detected in working days calculation.");
 		}
 	
-		// Fetch deductions and allowances
-		$deductions = $this->conn->query("SELECT * FROM employee_deductions WHERE (type = '".$pay['type']."' OR CONVERT(DATE, effective_date) BETWEEN '".$pay['date_from']."' AND '".$pay['date_from']."')");
-		$allowances = $this->conn->query("SELECT * FROM employee_allowances WHERE (type = '".$pay['type']."' OR CONVERT(DATE, effective_date) BETWEEN '".$pay['date_from']."' AND '".$pay['date_from']."')");
+		// Call the stored procedure to process payroll
+		$sql = "{CALL sp_calculate_payroll(?)}";
+		$stmt = sqlsrv_query($conn, $sql, [$id]);
 	
-		while ($row = $deductions->fetch_assoc()) {
-			$ded[$row['employee_id']][] = ['did' => $row['deduction_id'], "amount" => $row['amount']];
-		}
-		while ($row = $allowances->fetch_assoc()) {
-			$allow[$row['employee_id']][] = ['aid' => $row['allowance_id'], "amount" => $row['amount']];
+		if ($stmt === false) {
+			die("Error executing stored procedure: " . print_r(sqlsrv_errors(), true));
 		}
 	
-		// Process payroll for each employee
-		while ($row = $employee->fetch_assoc()) {
-			$salary = $row['salary'];
-			$daily = $salary / 22;
-			$min = (($salary / 22) / 8) / 60;
-			$absent = 0;
-			$late = 0;
-			$dp = 22 / $pay['type'];
-			$present = 0;
-			$net = 0;
-			$allow_amount = 0;
-			$ded_amount = 0;
+		// Update payroll status
+		$sql = "UPDATE payroll SET status = 1 WHERE id = ?";
+		$stmt = sqlsrv_query($conn, $sql, [$id]);
 	
-			for ($i = 0; $i < $calc_days; $i++) {
-				$dd = date("Y-m-d", strtotime($pay['date_from']." +".$i." days"));
-				$count = 0;
-				if (isset($attendance[$row['id']."_".$dd]['log'])) {
-					$count = count($attendance[$row['id']."_".$dd]['log']);
-				}
-	
-				if (isset($attendance[$row['id']."_".$dd]['log'][1]) && isset($attendance[$row['id']."_".$dd]['log'][2])) {
-					$att_mn = abs(strtotime($attendance[$row['id']."_".$dd]['log'][2])) - strtotime($attendance[$row['id']."_".$dd]['log'][1]); 
-					$att_mn = floor($att_mn / 60);
-					$net += ($att_mn * $min);
-					$late += (240 - $att_mn);
-					$present += .5;
-				}
-				if (isset($attendance[$row['id']."_".$dd]['log'][3]) && isset($attendance[$row['id']."_".$dd]['log'][4])) {
-					$att_mn = abs(strtotime($attendance[$row['id']."_".$dd]['log'][4])) - strtotime($attendance[$row['id']."_".$dd]['log'][3]); 
-					$att_mn = floor($att_mn / 60);
-					$net += ($att_mn * $min);
-					$late += (240 - $att_mn);
-					$present += .5;
-				}
-			}
-	
-			$ded_arr = [];
-			$all_arr = [];
-	
-			if (isset($allow[$row['id']])) {
-				foreach ($allow[$row['id']] as $arow) {
-					$all_arr[] = $arow;
-					$net += $arow['amount'];
-					$allow_amount += $arow['amount'];
-				}
-			}
-	
-			if (isset($ded[$row['id']])) {
-				foreach ($ded[$row['id']] as $drow) {
-					$ded_arr[] = $drow;
-					$net -= $drow['amount'];
-					$ded_amount += $drow['amount'];
-				}
-			}
-	
-			$absent = $dp - $present; 
-	
-			$data = " payroll_id = '".$pay['id']."' ";
-			$data .= ", employee_id = '".$row['id']."' ";
-			$data .= ", absent = '$absent' ";
-			$data .= ", present = '$present' ";
-			$data .= ", late = '$late' ";
-			$data .= ", salary = '$salary' ";
-			$data .= ", allowance_amount = '$allow_amount' ";
-			$data .= ", deduction_amount = '$ded_amount' ";
-			$data .= ", allowances = '".json_encode($all_arr, JSON_UNESCAPED_UNICODE)."' ";
-			$data .= ", deductions = '".json_encode($ded_arr, JSON_UNESCAPED_UNICODE)."' ";
-			$data .= ", net = '$net' ";
-	
-			$save[] = $this->conn->query("INSERT INTO payroll_items SET ".$data);
+		if ($stmt === false) {
+			die("Error updating payroll status: " . print_r(sqlsrv_errors(), true));
 		}
 	
-		if (isset($save)) {
-			$this->conn->query("UPDATE payroll SET status = 1 WHERE id = ".$pay['id']);
-			return 1;
-		}
-	}
+		return 1; // Success
+	}	
 	
 	// TODO:
 	function update_user() {
+		// Start output buffering to prevent accidental output
+		ob_start();
+	
+		// Extract POST data
 		extract($_POST);
 		$conn = $this->conn;
 	
+		// Hash the password if provided
 		$hashed_password = !empty($password) ? password_hash($password, PASSWORD_DEFAULT) : NULL;
 	
+		// Define the stored procedure call
 		$query = "{CALL sp_update_user(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
 	
+		// Initialize output parameters
 		$status = 0;
 		$message = "";
 	
+		// Prepare parameters for the stored procedure
 		$params = array(
 			$id, // UserID
 			$firstname,
@@ -989,15 +842,22 @@ class Action {
 			array(&$message, SQLSRV_PARAM_OUT)
 		);
 	
+		// Prepare the SQL statement
 		$stmt = sqlsrv_prepare($conn, $query, $params);
 	
 		if ($stmt === false) {
-			die(json_encode(['success' => false, 'message' => sqlsrv_errors()]));
+			// Clean the buffer and return a JSON error
+			ob_end_clean();
+			return json_encode(['success' => false, 'message' => 'Failed to prepare statement: ' . print_r(sqlsrv_errors(), true)]);
 		}
 	
+		// Execute the statement
 		if (sqlsrv_execute($stmt)) {
+			// Clean the buffer and return success
+			ob_end_clean();
 			return json_encode(['success' => ($status == 1), 'message' => $message]);
 		} else {
+			// Handle execution errors
 			$errors = sqlsrv_errors();
 			$errorMessage = "Database error occurred: ";
 			if ($errors) {
@@ -1005,11 +865,16 @@ class Action {
 					$errorMessage .= "SQLSTATE: " . $error['SQLSTATE'] . ", Code: " . $error['code'] . ", Message: " . $error['message'] . "\n";
 				}
 			}
+			// Log the error
 			error_log($errorMessage);
+	
+			// Clean the buffer and return a JSON error
+			ob_end_clean();
 			return json_encode(['success' => false, 'message' => 'Database error occurred.']);
 		}
 	}
 
+	
 	// TODO:
 	function logout(){
 		session_destroy();
@@ -1066,4 +931,126 @@ class Action {
 		return ob_get_clean(); // Return the buffered content
 	}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	//? DONE [UPDATED WORKING!!!]
+	function save_employee_attendance() {
+		extract($_POST);
+		$conn = $this->conn; // Database connection
+	
+		foreach ($employee_id as $k => $v) {
+			$datetime_log[$k] = date("Y-m-d H:i", strtotime($datetime_log[$k]));
+	
+			// Define the output parameter
+			$status = 0;
+			$outputParam = array(&$status); // Pass by reference
+	
+			$query = "EXEC sp_save_employee_attendance ?, ?, ?, ? OUTPUT";
+	
+			// Parameters array, including the output parameter
+			$params = array($employee_id[$k], $log_type[$k], $datetime_log[$k], &$status);
+	
+			// Execute Query
+			$stmt = sqlsrv_query($conn, $query, $params);
+	
+			if ($stmt === false) {
+				die("SQL Execution Error: " . print_r(sqlsrv_errors(), true)); // Debugging
+			}
+	
+			// Check if output parameter was set correctly
+			if ($status != 1) {
+				return 0; // Failure case
+			}
+		}
+	
+		return 1; // Success case
+	}
+	
+
+	//! DONE
+	function delete_employee_attendance() {
+		extract($_POST);
+		$conn = $this->conn;
+		
+		// Debug logging
+		error_log("Attempting to delete attendance with ID: " . $id);
+		
+		// Define output parameter
+		$params = array(
+			array($id, SQLSRV_PARAM_IN),
+			array(&$status, SQLSRV_PARAM_OUT, SQLSRV_PHPTYPE_INT)
+		);
+	
+		$query = "DECLARE @output_status INT;
+				  EXEC sp_delete_employee_attendance @id = ?, @output_status = @output_status OUTPUT;
+				  SELECT @output_status AS status;";
+	
+		$stmt = sqlsrv_query($conn, $query, $params);
+	
+		if ($stmt === false) {
+			error_log("SQL Error: " . print_r(sqlsrv_errors(), true));
+			die("SQL Execution Error: " . print_r(sqlsrv_errors(), true));
+		}
+	
+		sqlsrv_next_result($stmt); // Move to the next result set
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		
+		// Check if row exists before accessing array offset
+		$status = ($row !== false && isset($row['status'])) ? $row['status'] : 0;
+	
+		error_log("Delete attendance status: " . $status);
+		return $status;
+	}
+	
+	function delete_employee_attendance_single() {
+		extract($_POST);
+		$conn = $this->conn;
+		
+		// Debug logging
+		error_log("Attempting to delete single attendance with ID: " . $id);
+		
+		// Define output parameter
+		$params = array(
+			array($id, SQLSRV_PARAM_IN),
+			array(&$status, SQLSRV_PARAM_OUT, SQLSRV_PHPTYPE_INT)
+		);
+	
+		$query = "DECLARE @output_status INT;
+				  EXEC sp_delete_employee_attendance_single @attendance_id = ?, @output_status = @output_status OUTPUT;
+				  SELECT @output_status AS status;";
+	
+		$stmt = sqlsrv_query($conn, $query, $params);
+	
+		if ($stmt === false) {
+			error_log("SQL Error: " . print_r(sqlsrv_errors(), true));
+			die("SQL Execution Error: " . print_r(sqlsrv_errors(), true));
+		}
+	
+		sqlsrv_next_result($stmt); // Move to the next result set
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		
+		// Check if row exists before accessing array offset
+		$status = ($row !== false && isset($row['status'])) ? $row['status'] : 0;
+	
+		error_log("Delete single attendance status: " . $status);
+		return $status;
+	}
+	
 }
