@@ -33,7 +33,7 @@ if (isset($_GET['id'])) {
         </div>
         <div class="form-group">
             <label>Middlename</label>
-            <input type="text" name="middlename" placeholder="(optional)" class="form-control" value="<?php echo isset($middlename) ? $middlename : "" ?>" />
+            <input type="text" name="middlename" placeholder="('N/A' if none)" class="form-control" value="<?php echo isset($middlename) ? $middlename : "" ?>" />
         </div>
         <div class="form-group">
             <label>Lastname</label>

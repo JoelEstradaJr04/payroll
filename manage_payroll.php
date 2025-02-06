@@ -19,7 +19,7 @@
                     <option value="2" <?php echo (isset($type) && $type == 2) ? 'selected' : ''; ?>>Semi-Monthly</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary">Save</button>
+            <!-- <button type="submit" class="btn btn-primary">Save</button> -->
         </form>
     </div>
 </div>

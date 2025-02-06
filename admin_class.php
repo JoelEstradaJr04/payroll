@@ -8,7 +8,7 @@ class Action {
 
     private function connect() {
         $serverName = "DESKTOP-2A9KFDV\SQLEXPRESS";
-        $database = "payroll9";
+        $database = "payrollXY";
         $username = "sa";
         $password = "abc123";
 
@@ -520,160 +520,217 @@ function delete_user() {
 
 	//! DONE
     function delete_employee() {
-        extract($_POST);
-        $conn = $this->conn;
-
-        // Define output parameters
-        $status = 0;
-        $message = '';
-
-        // Prepare stored procedure call
-        $query = "{CALL sp_delete_employee(?, ?, ?)}";
-        $params = array(
-            &$id,
-            array(&$status, SQLSRV_PARAM_INOUT),
-            array(&$message, SQLSRV_PARAM_INOUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR), SQLSRV_SQLTYPE_NVARCHAR(200))
-        );
-
-        $stmt = sqlsrv_query($conn, $query, $params);
-
-        if ($stmt === false) {
-            error_log("Error in delete_employee: " . print_r(sqlsrv_errors(), true));
-            return json_encode(array(
-                'status' => -99,
-                'message' => 'Database error occurred'
-            ));
-        }
-
-        return json_encode(array(
-            'status' => $status,
-            'message' => $message
-        ));
-    }
+		$conn = $this->conn;
+	
+		if (!isset($_POST['id'])) {
+			echo json_encode(['status' => -1, 'message' => 'Invalid request']);
+			exit();
+		}
+	
+		$id = $_POST['id'];
+		$status = 0;
+		$message = '';
+	
+		// Define stored procedure call
+		$query = "{CALL sp_delete_employee(?, ?, ?)}";
+		$params = array(
+			array($id, SQLSRV_PARAM_IN),
+			array(&$status, SQLSRV_PARAM_INOUT),
+			array(&$message, SQLSRV_PARAM_INOUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR), SQLSRV_SQLTYPE_NVARCHAR(200))
+		);
+	
+		// Execute the stored procedure
+		$stmt = sqlsrv_query($conn, $query, $params);
+	
+		if ($stmt === false) {
+			error_log("Error in delete_employee: " . print_r(sqlsrv_errors(), true));
+			echo json_encode([
+				'status' => -99,
+				'message' => 'Database error occurred'
+			]);
+			exit();
+		}
+	
+		echo json_encode([
+			'status' => $status,
+			'message' => $message
+		]);
+		exit();
+	}
+	
 
 	
 	// TODO:
 	function save_employee_allowance() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
+		try {
+			extract($_POST);
+			$conn = $this->conn;
 	
-		foreach ($allowance_id as $k => $v) {
-			$status = 0; // Initialize status variable
-	
-			// Define query with OUTPUT parameter
-			$query = "EXEC sp_save_employee_allowance ?, ?, ?, ?, ?, ?";
-			$params = array(
-				$employee_id,
-				$allowance_id[$k],
-				$type[$k],
-				$amount[$k],
-				$effective_date[$k],
-				array(&$status, SQLSRV_PARAM_OUT) // Bind output parameter
-			);
-	
-			// Prepare and execute
-			$stmt = sqlsrv_prepare($conn, $query, $params);
-	
-			if ($stmt === false) {
-				die("Error in SQL Prepare: " . print_r(sqlsrv_errors(), true)); 
+			// Input validation
+			if (!isset($allowance_id) || !is_array($allowance_id)) {
+				throw new Exception("Invalid allowance data");
 			}
 	
-			if (!sqlsrv_execute($stmt)) {
-				die("Error in SQL Execute: " . print_r(sqlsrv_errors(), true)); 
+			// Start transaction
+			if (!sqlsrv_begin_transaction($conn)) {
+				throw new Exception("Could not begin transaction");
 			}
 	
-			// Check if status is successful
-			if ($status != 1) {
-				return 0; // Return failure
+			$success = true;
+	
+			foreach ($allowance_id as $k => $v) {
+				// Validate required fields
+				if (empty($allowance_id[$k]) || empty($type[$k]) || empty($amount[$k])) {
+					throw new Exception("Missing required fields");
+				}
+	
+				// Validate amount
+				if (!is_numeric($amount[$k]) || $amount[$k] <= 0) {
+					throw new Exception("Invalid amount");
+				}
+	
+				// Validate type
+				if (!in_array($type[$k], [1, 2, 3])) {
+					throw new Exception("Invalid type");
+				}
+	
+				// Prepare effective date
+				$effective_date_value = ($type[$k] == 3 && !empty($effective_date[$k])) ? $effective_date[$k] : null;
+	
+				$query = "EXEC sp_save_employee_allowance ?, ?, ?, ?, ?";
+				$params = array(
+					$employee_id,
+					$allowance_id[$k],
+					$type[$k],
+					$amount[$k],
+					$effective_date_value
+				);
+	
+				$stmt = sqlsrv_prepare($conn, $query, $params);
+				if ($stmt === false) {
+					throw new Exception("Prepare failed: " . print_r(sqlsrv_errors(), true));
+				}
+	
+				if (!sqlsrv_execute($stmt)) {
+					throw new Exception("Execute failed: " . print_r(sqlsrv_errors(), true));
+				}
 			}
+	
+			sqlsrv_commit($conn);
+			return 1;
+	
+		} catch (Exception $e) {
+			if (isset($conn) && sqlsrv_begin_transaction($conn) !== false) {
+				sqlsrv_rollback($conn);
+			}
+			error_log("Save employee allowance error: " . $e->getMessage());
+			return 0;
 		}
-	
-		return 1; // Return success
 	}
 	
 	/// TO BE TESTED
 	function delete_employee_allowance() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
-		
-		$status = 0; // Output variable
+		try {
+			extract($_POST);
+			$conn = $this->conn;
 	
-		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "{CALL sp_delete_employee_allowance(?, ?)}";
-		$params = array(
-			array($id, SQLSRV_PARAM_IN),
-			array(&$status, SQLSRV_PARAM_OUT) // Output parameter
-		);
+			$query = "EXEC sp_delete_employee_allowance ?";
+			$params = array($id);
 	
-		// Prepare the statement
-		$stmt = sqlsrv_prepare($conn, $query, $params);
+			$stmt = sqlsrv_prepare($conn, $query, $params);
+			if ($stmt === false) {
+				throw new Exception("Prepare failed: " . print_r(sqlsrv_errors(), true));
+			}
 	
-		// Check if the preparation succeeded
-		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+			if (!sqlsrv_execute($stmt)) {
+				throw new Exception("Execute failed: " . print_r(sqlsrv_errors(), true));
+			}
+			sqlsrv_free_stmt($stmt);
+			return 1;
+	
+		} catch (Exception $e) {
+			error_log("Delete employee allowance error: " . $e->getMessage());
+			return 0;
 		}
-	
-		// Execute the stored procedure
-		if (sqlsrv_execute($stmt)) {
-			return $status; // Return the status from the stored procedure
-		}
-	
-		return 0; // Failure case
 	}
 	
 	// TODO:
 	function save_employee_deduction() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
-	
-		foreach ($deduction_id as $k => $v) {
-			// Prepare stored procedure call using sqlsrv_prepare
-			$query = "EXEC sp_save_employee_deduction ?, ?, ?, ?, ?, @status OUTPUT";
-			$params = array($employee_id, $deduction_id[$k], $type[$k], $amount[$k], $effective_date[$k]);
-	
-			// Prepare the statement using sqlsrv_prepare
-			$stmt = sqlsrv_prepare($conn, $query, $params);
-	
-			// Check if the preparation succeeded
-			if ($stmt === false) {
-				die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
+		try {
+			if (!isset($_POST['employee_id']) || empty($_POST['employee_id'])) {
+				throw new Exception("Missing employee_id");
 			}
 	
-			// Execute the stored procedure
-			if (!sqlsrv_execute($stmt)) {
-				return 0; // Failure case
+			$employee_id = $_POST['employee_id'];
+			$conn = $this->conn;
+	
+			if (!isset($_POST['deduction_id']) || !is_array($_POST['deduction_id'])) {
+				throw new Exception("Invalid deduction data");
 			}
+	
+			sqlsrv_begin_transaction($conn);
+	
+			foreach ($_POST['deduction_id'] as $k => $v) {
+				if (empty($_POST['deduction_id'][$k]) || empty($_POST['type'][$k]) || empty($_POST['amount'][$k])) {
+					throw new Exception("Missing required fields");
+				}
+	
+				$effective_date = ($_POST['type'][$k] == 3 && !empty($_POST['effective_date'][$k])) ? $_POST['effective_date'][$k] : null;
+	
+				$query = "EXEC sp_save_employee_deduction ?, ?, ?, ?, ?";
+				$params = array($employee_id, $_POST['deduction_id'][$k], $_POST['type'][$k], $_POST['amount'][$k], $effective_date);
+	
+				$stmt = sqlsrv_prepare($conn, $query, $params);
+				if (!$stmt || !sqlsrv_execute($stmt)) {
+					throw new Exception("Database error: " . print_r(sqlsrv_errors(), true));
+				}
+			}
+	
+			sqlsrv_commit($conn);
+			return json_encode(["status" => 1, "message" => "Deduction successfully saved"]);
+	
+		} catch (Exception $e) {
+			sqlsrv_rollback($conn);
+			error_log("Save deduction error: " . $e->getMessage());
+			return json_encode(["status" => 0, "message" => $e->getMessage()]);
 		}
-	
-		return 1; // Success case
 	}
+	
+	
+	
 	
 	/// TO BE TESTED
 	function delete_employee_deduction() {
-		extract($_POST);
-		$conn = $this->conn; // Database connection
+		try {
+			extract($_POST);
+			$conn = $this->conn;
 	
-		// Prepare stored procedure call using sqlsrv_prepare
-		$query = "EXEC sp_delete_employee_deduction ?";
-		$params = array($id);
+			// Prepare stored procedure call
+			$query = "EXEC sp_delete_employee_deduction ?";
+			$params = array($id);
 	
-		// Prepare the statement using sqlsrv_prepare
-		$stmt = sqlsrv_prepare($conn, $query, $params);
-	
-		// Check if the preparation succeeded
-		if ($stmt === false) {
-			die(print_r(sqlsrv_errors(), true)); // Debugging if preparation fails
-		}
-	
-		// Execute the stored procedure
-		if (sqlsrv_execute($stmt)) {
-			// Fetch result
-			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-				return $row['status']; // Should return 1 if successful
+			$stmt = sqlsrv_prepare($conn, $query, $params);
+			if ($stmt === false) {
+				throw new Exception("Prepare failed: " . print_r(sqlsrv_errors(), true));
 			}
-		}
 	
-		return 0; // Failure case
+			if (!sqlsrv_execute($stmt)) {
+				throw new Exception("Execute failed: " . print_r(sqlsrv_errors(), true));
+			}
+	
+			// Fetch result from stored procedure
+			$status = 0; // Default to failure
+			if ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+				$status = $row['status']; // Capture the returned status
+			}
+	
+			sqlsrv_free_stmt($stmt);
+			echo $status; // Return 1 if successful, 0 otherwise
+	
+		} catch (Exception $e) {
+			error_log("Delete employee deduction error: " . $e->getMessage());
+			echo 0;
+		}
 	}
 	
 	
@@ -753,18 +810,9 @@ function delete_user() {
 	
 		$id = $_POST['id']; // Get Payroll ID
 	
-		// Establish database connection
-		$conn = $this->conn;
+		$conn = $this->conn; // Database connection (from your class)
 	
-		// Delete existing payroll items
-		$sql = "DELETE FROM payroll_items WHERE payroll_id = ?";
-		$stmt = sqlsrv_query($conn, $sql, [$id]);
-	
-		if ($stmt === false) {
-			die("Error deleting payroll items: " . print_r(sqlsrv_errors(), true));
-		}
-	
-		// Fetch payroll details
+		// 1. Fetch Payroll Details
 		$sql = "SELECT * FROM payroll WHERE id = ?";
 		$stmt = sqlsrv_query($conn, $sql, [$id]);
 	
@@ -782,30 +830,49 @@ function delete_user() {
 			die("Error: Invalid payroll type.");
 		}
 	
-		// Determine number of working days
-		$dm = ($pay['type'] == 1) ? 22 : 11;
+		// 2. Determine Number of Working Days
+		$dm = ($pay['type'] == 1) ? 22 : 11; // Assuming 1: Monthly, 2: Semi-monthly
 	
 		if ($dm == 0) {
-			die("Error: Division by zero detected in working days calculation.");
+			die("Error: Division by zero in working days calculation.");
 		}
 	
-		// Call the stored procedure to process payroll
+	
+		// 3. Call Stored Procedure
 		$sql = "{CALL sp_calculate_payroll(?)}";
-		$stmt = sqlsrv_query($conn, $sql, [$id]);
+		$params = array($id);
+		$stmt = sqlsrv_query($conn, $sql, $params);
 	
 		if ($stmt === false) {
 			die("Error executing stored procedure: " . print_r(sqlsrv_errors(), true));
 		}
 	
-		// Update payroll status
-		$sql = "UPDATE payroll SET status = 1 WHERE id = ?";
-		$stmt = sqlsrv_query($conn, $sql, [$id]);
+		// 4. Check Stored Procedure Result (Crucial!)
+		$rows_affected = sqlsrv_rows_affected($stmt);
 	
-		if ($stmt === false) {
-			die("Error updating payroll status: " . print_r(sqlsrv_errors(), true));
+		if ($rows_affected === false) {
+			die("Error getting rows affected by stored procedure: " . print_r(sqlsrv_errors(), true));
 		}
 	
-		return 1; // Success
+		sqlsrv_free_stmt($stmt); // Free statement resource
+	
+		// 5. Update Payroll Status (Conditional)
+		if ($rows_affected > 0) { // SP updated payroll items
+			$update_sql = "UPDATE payroll SET status = 1 WHERE id = ?";
+			$update_stmt = sqlsrv_query($conn, $update_sql, [$id]);
+	
+			if ($update_stmt === false) {
+				die("Error updating payroll status: " . print_r(sqlsrv_errors(), true));
+			}
+			sqlsrv_free_stmt($update_stmt);
+	
+			return 1; // Success (SP updated items and status updated)
+	
+		} else {
+			// SP didn't update any items (handle as warning or error)
+			error_log("Warning: sp_calculate_payroll did not update any payroll items for ID: " . $id);
+			return 2; // Example: Return 2 for warning (no items updated)
+		}
 	}	
 	
 	// TODO:

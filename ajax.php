@@ -66,6 +66,18 @@ if ($action == 'delete_employee_attendance') {
 if ($action == 'delete_employee_attendance_single') {
     echo $admin->delete_employee_attendance_single();
 }
+if ($action == 'save_employee_allowance') {
+    echo $admin->save_employee_allowance();
+}
+if ($action == 'delete_employee_allowance') {
+    echo $admin->delete_employee_allowance();
+}
+if ($action == 'save_employee_deduction') {
+    echo $admin->save_employee_deduction();
+}
+if ($action == 'delete_employee_deduction') {
+    echo $admin->delete_employee_deduction();
+}
 if ($action == 'save_payroll') {
     echo $admin->save_payroll();
 }

@@ -1,6 +1,6 @@
 <?php
 $serverName = "DESKTOP-2A9KFDV\SQLEXPRESS";
-$database = "payroll9";
+$database = "payrollXY";
 $username = "sa";
 $password = "abc123";
 

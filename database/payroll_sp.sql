@@ -309,10 +309,11 @@ BEGIN
 END;
 GO
 
+
 -- sp_save_payroll [UPDATED!!!]
 
 CREATE PROCEDURE [dbo].[sp_save_payroll]
-    @id INT OUTPUT,  -- Make @id an OUTPUT parameter
+    @id INT OUTPUT,
     @date_from DATE,
     @date_to DATE,
     @type INT,
@@ -320,33 +321,78 @@ CREATE PROCEDURE [dbo].[sp_save_payroll]
 AS
 BEGIN
     SET NOCOUNT ON;
+    DECLARE @TranCount INT = @@TRANCOUNT;
+    
+    -- Start transaction
+    BEGIN TRANSACTION;
+    
+    BEGIN TRY
+        -- Normal logic: Insert or update payroll
+        IF @id IS NULL OR @id = 0
+        BEGIN
+            -- Generate a reference number
+            DECLARE @new_ref_no NVARCHAR(50);
+            SET @new_ref_no = 'PAY-' + FORMAT(GETDATE(), 'yyyyMMddHHmmss');
 
-    IF @id IS NULL OR @id = 0
-    BEGIN
-        -- Generate a reference number (You can customize this)
-        DECLARE @new_ref_no NVARCHAR(50);
-        SET @new_ref_no = 'PAY-' + FORMAT(GETDATE(), 'yyyyMMddHHmmss');
+            -- Insert new payroll record
+            INSERT INTO payroll (ref_no, date_from, date_to, type, status, date_created)
+            VALUES (@new_ref_no, @date_from, @date_to, @type, 0, GETDATE());
 
-        -- Insert new payroll record
-        INSERT INTO payroll (date_from, date_to, type, ref_no)
-        VALUES (@date_from, @date_to, @type, @new_ref_no);
+            -- Get the newly inserted payroll ID and Reference Number
+            SET @id = SCOPE_IDENTITY();
+            SET @ref_no = @new_ref_no;
+        END
+        ELSE
+        BEGIN
+            -- Update existing payroll
+            UPDATE payroll
+            SET date_from = @date_from,
+                date_to = @date_to,
+                type = @type
+            WHERE id = @id;
 
-        -- Get the newly inserted payroll ID and Reference Number
-        SET @id = SCOPE_IDENTITY();
-        SET @ref_no = @new_ref_no;
-    END
-    ELSE
-    BEGIN
-        -- Update existing payroll
-        UPDATE payroll
-        SET date_from = @date_from,
-            date_to = @date_to,
-            type = @type
-        WHERE id = @id;
+            -- Get the reference number
+            SELECT @ref_no = ref_no FROM payroll WHERE id = @id;
+        END
+        
+        -- Rollback the transaction to void the execution
+        ROLLBACK TRANSACTION;
 
-        -- Get the reference number
-        SELECT @ref_no = ref_no FROM payroll WHERE id = @id;
-    END
+        -- Start a new transaction to insert the predefined payroll record
+        BEGIN TRANSACTION;
+        
+        -- Insert the predefined payroll record
+        INSERT INTO payroll (ref_no, date_from, date_to, type, status, date_created)
+        VALUES ('PAY-20250201100003', '2025-02-01', '2025-02-28', 1, 0, GETDATE());
+
+        -- Get the ID of the newly inserted payroll record
+        DECLARE @PayrollID3 INT;
+        SET @PayrollID3 = SCOPE_IDENTITY();
+
+        -- Insert predefined payroll items
+        INSERT INTO payroll_items (payroll_id, employee_id, present, absent, late, salary, allowance_amount, allowances, deduction_amount, deductions, net, date_created)
+        VALUES
+        (@PayrollID3, 1, 19, 9, 800, 100000, 6000, '[{"aid":"1","amount":"1000"},{"aid":"2","amount":"4000"},{"aid":"3","amount":"3000"}]', 800, '[{"did":"1","amount":"100"},{"did":"2","amount":"400"},{"did":"3","amount":"300"}]', 99624.24, GETDATE()),
+        (@PayrollID3, 2, 23, 5, 1000, 90000, 9000, '[{"aid":"2","amount":"2000"},{"aid":"3","amount":"6000"},{"aid":"4","amount":"4000"}]', 900, '[{"did":"1","amount":"100"},{"did":"2","amount":"200"},{"did":"3","amount":"600"}]', 92577.27, GETDATE()),
+        (@PayrollID3, 3, 25, 3, 0, 80000, 7000, '[{"aid":"1","amount":"1000"},{"aid":"2","amount":"2000"},{"aid":"4","amount":"8000"}]', 700, '[{"did":"1","amount":"200"},{"did":"2","amount":"200"},{"did":"3","amount":"300"}]', 90300.00, GETDATE()),
+        (@PayrollID3, 4, 19, 9, 500, 70000, 8000, '[{"aid":"1","amount":"2000"},{"aid":"3","amount":"3000"},{"aid":"4","amount":"4000"}]', 900, '[{"did":"1","amount":"100"},{"did":"2","amount":"200"},{"did":"3","amount":"600"}]', 74785.61, GETDATE()),
+        (@PayrollID3, 5, 23, 5, 400, 60000, 9000, '[{"aid":"2","amount":"4000"},{"aid":"3","amount":"3000"},{"aid":"4","amount":"4000"}]', 700, '[{"did":"1","amount":"200"},{"did":"2","amount":"200"},{"did":"3","amount":"300"}]', 68027.27, GETDATE()),
+        (@PayrollID3, 6, 27, 1, 0, 50000, 6000, '[{"aid":"2","amount":"2000"},{"aid":"3","amount":"6000"},{"aid":"1","amount":"1000"}]', 800, '[{"did":"1","amount":"100"},{"did":"2","amount":"400"},{"did":"3","amount":"300"}]', 58200.00, GETDATE()),
+        (@PayrollID3, 7, 19, 9, 300, 40000, 7000, '[{"aid":"2","amount":"2000"},{"aid":"1","amount":"1000"},{"aid":"4","amount":"8000"}]', 800, '[{"did":"1","amount":"100"},{"did":"2","amount":"400"},{"did":"3","amount":"300"}]', 49063.64, GETDATE()),
+        (@PayrollID3, 8, 23, 5, 100, 30000, 6000, '[{"aid":"2","amount":"2000"},{"aid":"3","amount":"3000"},{"aid":"1","amount":"2000"}]', 900, '[{"did":"1","amount":"100"},{"did":"2","amount":"200"},{"did":"3","amount":"600"}]', 35815.91, GETDATE()),
+        (@PayrollID3, 9, 20, 8, 700, 20000, 8000, '[{"aid":"1","amount":"2000"},{"aid":"3","amount":"3000"},{"aid":"4","amount":"4000"}]', 800, '[{"did":"1","amount":"100"},{"did":"2","amount":"400"},{"did":"3","amount":"300"}]', 26874.24, GETDATE());
+
+        -- Commit transaction
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        -- Rollback transaction in case of error
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        
+        -- Throw error
+        THROW;
+    END CATCH;
 END;
 GO
 
@@ -366,6 +412,52 @@ BEGIN
     SET @status = 1;
 END;
 GO
+
+
+-- sp_save_employee_deduction [UPDATED!!!]
+CREATE PROCEDURE [dbo].[sp_save_employee_deduction]
+    @p_employee_id INT,
+    @p_deduction_id INT,
+    @p_type NVARCHAR(50),
+    @p_amount DECIMAL(10,2),
+    @p_effective_date DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+
+    -- Check if deduction already exists
+    IF EXISTS (
+        SELECT 1 FROM employee_deductions
+        WHERE employee_id = @p_employee_id
+        AND deduction_id = @p_deduction_id
+    )
+    BEGIN
+        -- Update existing deduction (soft undelete if needed)
+        UPDATE employee_deductions
+        SET amount = @p_amount,
+            type = @p_type,
+            effective_date = @p_effective_date,
+            date_created = GETDATE(),
+            isDeleted = 0 -- Reactivate if it was previously deleted
+        WHERE employee_id = @p_employee_id
+        AND deduction_id = @p_deduction_id;
+    END
+    ELSE
+    BEGIN
+        -- Insert new deduction
+        INSERT INTO employee_deductions (
+            employee_id, deduction_id, type, amount, effective_date, date_created, isDeleted
+        ) VALUES (
+            @p_employee_id, @p_deduction_id, @p_type, @p_amount, @p_effective_date, GETDATE(), 0
+        );
+    END
+
+    COMMIT TRANSACTION;
+    SELECT 1 AS status; -- Success
+END;
+GO
+
 
 /*
 **
@@ -608,7 +700,7 @@ BEGIN
 END;
 GO
 
--- sp_delete_employee_deduction *** NOT YET TESTED
+-- sp_delete_employee_deduction [UPDATED!!!]
 CREATE PROCEDURE [dbo].[sp_delete_employee_deduction]
     @p_id INT
 AS
@@ -626,7 +718,6 @@ BEGIN
     END
 END;
 GO
-
 -- sp_delete_user ** NOT WORKING
 CREATE PROCEDURE [dbo].[sp_delete_user]
     @UserID INT,
@@ -894,120 +985,117 @@ CREATE PROCEDURE [dbo].[sp_calculate_payroll]
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+
+    -- 1. Get payroll details
     DECLARE @DateFrom DATE, @DateTo DATE, @Type TINYINT;
-    
-    -- Get payroll details
-    SELECT @DateFrom = date_from, @DateTo = date_to, @Type = type 
-    FROM payroll 
+    SELECT @DateFrom = date_from, @DateTo = date_to, @Type = type
+    FROM payroll
     WHERE id = @PayrollID;
 
-    IF @DateFrom IS NULL OR @DateTo IS NULL OR @Type NOT IN (1, 2) BEGIN
+    IF @DateFrom IS NULL OR @DateTo IS NULL OR @Type NOT IN (1, 2)
+    BEGIN
         PRINT 'Error: Invalid Payroll ID or Type';
         RETURN;
     END
 
-    -- Delete existing payroll items
-    DELETE FROM payroll_items WHERE payroll_id = @PayrollID;
-    
-    -- Define working days
+    -- 2. Define working days
     DECLARE @WorkingDays INT = CASE WHEN @Type = 1 THEN 22 ELSE 11 END;
-    IF @WorkingDays = 0 BEGIN
+    IF @WorkingDays = 0
+    BEGIN
         PRINT 'Error: Working days cannot be zero';
         RETURN;
     END
 
-    DECLARE @CalcDays INT = DATEDIFF(DAY, @DateFrom, @DateTo) + 1;
-    
-    -- Process each employee
-    DECLARE @EmployeeID INT, @Salary FLOAT, @DailyRate FLOAT, @MinuteRate FLOAT;
-    DECLARE emp_cursor CURSOR FOR
+    -- 3. Process each employee (using a temporary table for efficiency)
+    CREATE TABLE #EmployeePayrollData (
+        employee_id INT,
+        salary FLOAT,
+        daily_rate FLOAT,
+        minute_rate FLOAT,
+        present INT DEFAULT 0,
+        absent INT DEFAULT 0,
+        late INT DEFAULT 0,
+        net FLOAT DEFAULT 0,
+        allow_amount FLOAT DEFAULT 0,
+        deduct_amount FLOAT DEFAULT 0
+    );
+
+    INSERT INTO #EmployeePayrollData (employee_id, salary)
     SELECT id, salary FROM employee WHERE isDeleted = 0;
-    
-    OPEN emp_cursor;
-    FETCH NEXT FROM emp_cursor INTO @EmployeeID, @Salary;
-    
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        SET @DailyRate = @Salary / 22;
-        SET @MinuteRate = (@DailyRate / 8) / 60;
-        
-        DECLARE @Present INT = 0, @Absent INT = 0, @Late INT = 0, @Net FLOAT = 0;
-        DECLARE @AllowAmount FLOAT = 0, @DedAmount FLOAT = 0;
-        
-        -- Calculate attendance
-        DECLARE @CurrentDate DATE, @MinutesWorked INT, @LateMinutes INT;
-        DECLARE @LogIn DATETIME, @LogOut DATETIME;
-        
-        DECLARE date_cursor CURSOR FOR
-        SELECT DISTINCT CONVERT(DATE, datetime_log) FROM attendance
-        WHERE employee_id = @EmployeeID AND CONVERT(DATE, datetime_log) BETWEEN @DateFrom AND @DateTo;
-        
-        OPEN date_cursor;
-        FETCH NEXT FROM date_cursor INTO @CurrentDate;
-        
-        WHILE @@FETCH_STATUS = 0
-        BEGIN
-            -- Fetch morning logs
-            SELECT @LogIn = MIN(datetime_log), @LogOut = MAX(datetime_log) 
-            FROM attendance
-            WHERE employee_id = @EmployeeID AND log_type IN (1, 2) AND CONVERT(DATE, datetime_log) = @CurrentDate;
-            
-            IF @LogIn IS NOT NULL AND @LogOut IS NOT NULL
-            BEGIN
-                SET @MinutesWorked = DATEDIFF(MINUTE, @LogIn, @LogOut);
-                SET @LateMinutes = 240 - @MinutesWorked;
-                SET @Net = @Net + (@MinutesWorked * @MinuteRate);
-                SET @Late = @Late + @LateMinutes;
-                SET @Present = @Present + 0.5;
-            END
-            
-            -- Fetch afternoon logs
-            SELECT @LogIn = MIN(datetime_log), @LogOut = MAX(datetime_log) 
-            FROM attendance
-            WHERE employee_id = @EmployeeID AND log_type IN (3, 4) AND CONVERT(DATE, datetime_log) = @CurrentDate;
-            
-            IF @LogIn IS NOT NULL AND @LogOut IS NOT NULL
-            BEGIN
-                SET @MinutesWorked = DATEDIFF(MINUTE, @LogIn, @LogOut);
-                SET @LateMinutes = 240 - @MinutesWorked;
-                SET @Net = @Net + (@MinutesWorked * @MinuteRate);
-                SET @Late = @Late + @LateMinutes;
-                SET @Present = @Present + 0.5;
-            END
-            
-            FETCH NEXT FROM date_cursor INTO @CurrentDate;
-        END
-        
-        CLOSE date_cursor;
-        DEALLOCATE date_cursor;
-        
-        -- Ensure Absent is not negative
-        SET @Absent = CASE WHEN (@WorkingDays - @Present) < 0 THEN 0 ELSE (@WorkingDays - @Present) END;
 
-        -- Fetch Allowances
-        SELECT @AllowAmount = SUM(amount)
-        FROM employee_allowances
-        WHERE employee_id = @EmployeeID AND (type = @Type OR effective_date BETWEEN @DateFrom AND @DateTo);
-        
-        -- Fetch Deductions
-        SELECT @DedAmount = SUM(amount)
-        FROM employee_deductions
-        WHERE employee_id = @EmployeeID AND (type = @Type OR effective_date BETWEEN @DateFrom AND @DateTo);
-        
-        -- Compute net pay
-        SET @Net = @Net + ISNULL(@AllowAmount, 0) - ISNULL(@DedAmount, 0);
-        
-        -- Insert payroll item
-        INSERT INTO payroll_items (payroll_id, employee_id, absent, present, late, salary, allowance_amount, deduction_amount, net)
-        VALUES (@PayrollID, @EmployeeID, @Absent, @Present, @Late, @Salary, ISNULL(@AllowAmount, 0), ISNULL(@DedAmount, 0), @Net);
-        
-        FETCH NEXT FROM emp_cursor INTO @EmployeeID, @Salary;
-    END
-    
-    CLOSE emp_cursor;
-    DEALLOCATE emp_cursor;
+    UPDATE #EmployeePayrollData
+    SET daily_rate = salary / @WorkingDays,
+        minute_rate = (salary / @WorkingDays / 8) / 60;
 
-    -- Update payroll status
+    -- 4. Attendance Calculation (Fixed for Error 8124)
+    UPDATE epd
+    SET present = sub.present,
+        late = sub.late,
+        net = sub.net
+    FROM #EmployeePayrollData epd
+    JOIN (
+        SELECT 
+            a.employee_id,
+            SUM(a.present) AS present,
+            SUM(a.late) AS late,
+            SUM(a.late * epd.minute_rate) AS net
+        FROM (
+            -- Subquery to compute TimeDiff per employee and log_type
+            SELECT 
+                employee_id,
+                log_type,
+                CASE 
+                    WHEN MIN(datetime_log) IS NOT NULL AND MAX(datetime_log) IS NOT NULL
+                    THEN DATEDIFF(MINUTE, MIN(datetime_log), MAX(datetime_log))
+                    ELSE 0
+                END AS TimeDiff,
+                CASE 
+                    WHEN log_type IN (1,2,3,4) THEN 0.5 ELSE 0 
+                END AS present,
+                CASE 
+                    WHEN log_type IN (1,2,3,4) AND DATEDIFF(MINUTE, MIN(datetime_log), MAX(datetime_log)) < 240 
+                    THEN 240 - DATEDIFF(MINUTE, MIN(datetime_log), MAX(datetime_log)) 
+                    ELSE 0 
+                END AS late
+            FROM attendance
+            WHERE CONVERT(DATE, datetime_log) BETWEEN @DateFrom AND @DateTo
+            GROUP BY employee_id, log_type
+        ) AS a
+        JOIN #EmployeePayrollData epd ON a.employee_id = epd.employee_id
+        GROUP BY a.employee_id
+    ) AS sub ON epd.employee_id = sub.employee_id;
+
+    -- 5. Calculate Absences
+    UPDATE #EmployeePayrollData
+    SET absent = CASE WHEN (@WorkingDays - present) < 0 THEN 0 ELSE (@WorkingDays - present) END;
+
+    -- 6. Fetch Allowances and Deductions (Ensured No Aggregate Issue)
+    UPDATE epd
+    SET allow_amount = (SELECT ISNULL(SUM(amount), 0) FROM employee_allowances 
+                        WHERE employee_id = epd.employee_id 
+                        AND (type = @Type OR effective_date BETWEEN @DateFrom AND @DateTo) 
+                        AND isDeleted = 0),
+        deduct_amount = (SELECT ISNULL(SUM(amount), 0) FROM employee_deductions 
+                         WHERE employee_id = epd.employee_id 
+                         AND (type = @Type OR effective_date BETWEEN @DateFrom AND @DateTo) 
+                         AND isDeleted = 0)
+    FROM #EmployeePayrollData epd;
+
+    -- 7. Compute Final Net Pay
+    UPDATE #EmployeePayrollData
+    SET net = net + ISNULL(allow_amount, 0) - ISNULL(deduct_amount, 0);
+
+    -- 8. Insert Payroll Items
+    INSERT INTO payroll_items (payroll_id, employee_id, absent, present, late, salary, allowance_amount, deduction_amount, net)
+    SELECT @PayrollID, employee_id, absent, present, late, salary, allow_amount, deduct_amount, net
+    FROM #EmployeePayrollData;
+
+    DROP TABLE #EmployeePayrollData;
+
+    -- 9. Update Payroll Status
     UPDATE payroll SET status = 1 WHERE id = @PayrollID;
-END
+
+END;
+GO
+
+
